@@ -1,3 +1,20 @@
+2016-02-09  Uwe Brauer  <oub@mat.ucm.es>
+
+	* matlab.el (matlab-mode-version): Change version number to
+	3.3.3
+
+	* matlab-publish.el (matlab-select-publish-form): Cleanup file
+
+	* matlab.el (matlab-change-current-directory): Applied patch,
+	from an unknown source found in http://sourceforge.net/p/matlab-emacs/patches/2/
+	Purpose: add the possibility to switch the matlab directory to the
+	current one.
+
+	* matlab.el (matlab-shell): Applied patch
+	from http://sourceforge.net/p/matlab-emacs/patches/2/
+	which results in
+	(define-key km (kbd "TAB") 'matlab-shell-tab)
+
 2014-11-05  zappo  <zappo@eludlam-deb6-64>
 
 	* Makefile: (VERSION) Updated.

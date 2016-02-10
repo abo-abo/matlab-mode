@@ -7,7 +7,7 @@
 ;; Keywords: MATLAB(R)
 ;; Version:
 
-(defconst matlab-mode-version "3.3.2"
+(defconst matlab-mode-version "3.3.3"
   "Current version of MATLAB(R) mode.")
 
 ;;
@@ -434,6 +434,14 @@ Valid values are:
   :type 'boolean)
 
 (make-variable-buffer-local 'matlab-return-add-semicolon)
+
+(defcustom matlab-change-current-directory nil
+  "*If non nil, make file's directory the current directory when
+evaluating it."
+  :group 'matlab
+  :type 'boolean)
+
+(make-variable-buffer-local 'matlab-change-current-directory)
 
 ;; Load in the region we use for highlighting stuff.
 (if (and (featurep 'custom) (fboundp 'custom-declare-variable))
@@ -4339,7 +4347,7 @@ Try C-h f matlab-shell RET"))
 	      (define-key km [(control h) (control m)]
 		matlab-help-map)
               (define-key km "\C-c." 'matlab-find-file-on-path)
-	      (define-key km [(tab)] 'matlab-shell-tab)
+	      (define-key km (kbd "TAB") 'matlab-shell-tab)
 	      (define-key km "\C-i" 'matlab-shell-tab)
 	      (define-key km [(control up)]
 		'comint-previous-matching-input-from-input)
@@ -5096,6 +5104,8 @@ Similar to  `comint-send-input'."
   (let ((fn-name (file-name-sans-extension
 		  (file-name-nondirectory (buffer-file-name))))
 	(msbn (concat "*" matlab-shell-buffer-name "*"))
+        (dir (file-name-directory buffer-file-name))
+        (change-cd matlab-change-current-directory)
 	(param ""))
     (save-buffer)
     ;; Do we need parameters?
@@ -5117,6 +5127,21 @@ Similar to  `comint-send-input'."
       (if (get-buffer-window msbn t)
 	  (select-window (get-buffer-window msbn t))
 	(switch-to-buffer (concat "*" matlab-shell-buffer-name "*")))
+
+      ;; change current directory?
+      (if change-cd
+          (let ((cmd (progn
+                       (mapc
+                        (lambda (e)
+                          (while (string-match (car e) dir)
+                            (setq dir (replace-match
+                                       (format "', char(%s), '" (cdr e)) t t dir))))
+                        '(("ô" . "244")
+                          ("é" . "233")
+                          ("è" . "232")
+                          ("à" . "224")))
+                       dir)))
+            (matlab-shell-send-string (concat "cd(['" cmd "'])\n"))))
 
       (let ((cmd (concat fn-name " " param)))
 	(matlab-shell-add-to-input-history cmd)
