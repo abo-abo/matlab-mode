@@ -1,4 +1,4 @@
-2016-02-09  Uwe Brauer  <oub@mat.ucm.es>
+2016-02-09  Uwe Brauer  <oub@mat.ucm.es> 
 
 	* matlab.el (matlab-mode-version): Change version number to
 	3.3.3
@@ -14,6 +14,10 @@
 	from http://sourceforge.net/p/matlab-emacs/patches/2/
 	which results in
 	(define-key km (kbd "TAB") 'matlab-shell-tab)
+
+2016-02-09  Uwe Brauer  <oub@mat.ucm.es>
+
+	Imported from CVS to git.
 
 2014-11-05  zappo  <zappo@eludlam-deb6-64>
 
