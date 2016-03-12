@@ -1,8 +1,8 @@
-matlab-emacs Project:
+* Matlab-emacs Project:
 
 MATLAB and Emacs integration
 
-* INSTALL
+** INSTALL
 
   Add the following to your .emacs file:
 
@@ -13,12 +13,23 @@ MATLAB and Emacs integration
   ;; Enable CEDET feature support for MATLAB code. (Optional)
   ;; (matlab-cedet-setup)
 
+** MELPA
 
-* Finding Updates
+GNU emacs (sorry Xemacs folks) users (version >=24) can use the
+package as provided by MELPA.
+Set 
+(add-to-list 'package-archives
+             '("melpa" . "http://melpa.org/packages/") t)
+
+And then run 
+M-x
+package-list-packages
+
+
 
 ** Releases
 
-   The most recent version of matlab.el is always in CVS.
+   The most recent version of matlab.el is always in GIT.
 
    You can get an old downloader for matlab-emacs from MATLAB File Exchange.
 
@@ -40,9 +51,10 @@ MATLAB and Emacs integration
    from before R2008a, you will want to use the version of mlint from
    that CD.
 
-** CVS
+** GIT
 
-   matlab-emacs is available via CVS from SourceForge.
+   matlab-emacs is *now* available via GIT from SourceForge. The CVS
+   repository is still at SourceForge but it is *no* longer updated.
 
    Homepage:
    http://matlab-emacs.sf.net
@@ -50,16 +62,22 @@ MATLAB and Emacs integration
    Project Page:
    http://sourceforge.net/projects/matlab-emacs
 
-   CVS Repository:
-   http://matlab-emacs.cvs.sourceforge.net/matlab-emacs
+   GIT Repository:
 
-   If you do not have a CVS client on your machine, you can use the
+   https://sourceforge.net/p/matlab-emacs/src/ci/master/tree/
+
+   You need a git client on your machine. Then just run
+
+
+   git clone git://git.code.sf.net/p/matlab-emacs/src matlab-emacs-src
+
+   If you do not have a GIT client on your machine, you can use the
    MATLAB script dl_emacs_support.m to download a fresh copy of the
    matlab.el sources.
+   https://sourceforge.net/p/matlab-emacs/src/ci/master/tree/dl_emacs_support.m
 
-   http://matlab-emacs.cvs.sourceforge.net/viewvc/matlab-emacs/matlab-emacs/dl_emacs_support.m
 
-** Dependancies
+** Dependencies
 
    MATLAB-Emacs can use the CEDET suite for the following items:
 	- Modifying the build system (Makefiles, etc)
@@ -80,8 +98,6 @@ MATLAB and Emacs integration
    If you do want to use CEDET, add the following to your .emacs file:
 
    (matlab-cedet-setup)
-
-* Mailing List:
 
 ** New Mailing List
 
