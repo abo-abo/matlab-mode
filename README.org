@@ -115,3 +115,32 @@ package-list-packages
    please unsubscribe, and subscribe to the new list above.
 
    to unsubscribe, send email with the body of: "unsubscribe matlab-emacs"
+
+** Known problems
+
+*** Unable to open .m files in matlab with Emacs
+
+From: Xu He <xuhe01@gmail.com> wrote:
+
+Dear all,
+
+Following the install guide, I setup the matlab-emacs on my ubuntu 12.04
+system, and I can edit and run the m file with emacs.
+
+But I can not open nor edit m file with matlab. When I open the file in the matlab window,
+nothing happens.
+
+I tried to eliminate the lines about matlab-emacs in ~/.emacs file, but the
+problem can not be solved.
+
+I need to edit and run the file in matlab. Thanks for any help.
+
+Best regards,
+Xu He
+
+*** Solution 
+
+From: Hunter McClelland [mailto:hunter.mcclelland@gmail.com]
+Till we discovered that Matlab-emacs changes the "Editor" matlab uses.
+Go to Preferences->Editor/debugger and change the Editor back to
+"MATLAB Editor".
