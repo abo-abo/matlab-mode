@@ -1,3 +1,7 @@
+2016-03-16  Uwe Brauer  <oub@mat.ucm.es>
+
+	* dl_emacs_support.m (getfiles): update the url and README-->README.org
+
 2016-02-09  Uwe Brauer  <oub@mat.ucm.es> 
 
 	* matlab.el (matlab-mode-version): Change version number to
