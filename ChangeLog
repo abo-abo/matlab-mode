@@ -1,3 +1,8 @@
+2016-03-17  Uwe Brauer  <oub@mat.ucm.es>
+
+	* matlab.el (matlab-shell-mode): Applied patch from  Odd Andersen
+	<odd.andersen@gmail.com>. 
+
 2016-03-16  Uwe Brauer  <oub@mat.ucm.es>
 
 	* dl_emacs_support.m (getfiles): update the url and README-->README.org
