@@ -1,29 +1,33 @@
 * Matlab-emacs Project:
 
-MATLAB and Emacs integration
+  MATLAB and Emacs integration
 
 ** INSTALL
 
-  Add the following to your .emacs file:
+   Add the following to your .emacs file:
 
+   #+BEGIN_SRC elisp
   ;; Replace path below to be where your matlab.el file is.
   (add-to-list 'load-path "~/path/to/matlab-emacs")
   (load-library "matlab-load")
 
   ;; Enable CEDET feature support for MATLAB code. (Optional)
   ;; (matlab-cedet-setup)
+   #+END_SRC
 
 ** MELPA
 
-GNU emacs (sorry Xemacs folks) users (version >=24) can use the
-package as provided by MELPA.
-Set 
+   GNU emacs (sorry Xemacs folks) users (version >=24) can use the
+   package as provided by MELPA.
+   Set 
+
+   #+BEGIN_SRC elisp
 (add-to-list 'package-archives
              '("melpa" . "http://melpa.org/packages/") t)
-
-And then run 
-M-x
-package-list-packages
+   #+END_SRC
+   And then run 
+   M-x
+   package-list-packages
 
 
 
@@ -68,8 +72,9 @@ package-list-packages
 
    You need a git client on your machine. Then just run
 
-
+   #+BEGIN_SRC shell
    git clone git://git.code.sf.net/p/matlab-emacs/src matlab-emacs-src
+   #+END_SRC
 
    If you do not have a GIT client on your machine, you can use the
    MATLAB script dl_emacs_support.m to download a fresh copy of the
@@ -80,24 +85,25 @@ package-list-packages
 ** Dependencies
 
    MATLAB-Emacs can use the CEDET suite for the following items:
-	- Modifying the build system (Makefiles, etc)
-	- mlint (uses EIEIO object system)
-	- parsing/completion (uses semantic parsing system)
-        - some template insertion features
+   - Modifying the build system (Makefiles, etc)
+   - mlint (uses EIEIO object system)
+   - parsing/completion (uses semantic parsing system)
+     - some template insertion features
 
-   As of Emacs 23.2, CEDET is included in Emacs, and nothing extra
-   is needed to satisfy that dependency.
+     As of Emacs 23.2, CEDET is included in Emacs, and nothing extra
+     is needed to satisfy that dependency.
 
-   For older versions of Emacs:
+     For older versions of Emacs:
 
-   See http://cedet.sf.net for downloading CEDET.
+     See http://cedet.sf.net for downloading CEDET.
 
-   If you only want to use matlab.el for editing code or running the
-   MATLAB shell, you DO NOT need to install CEDET.
+     If you only want to use matlab.el for editing code or running the
+     MATLAB shell, you DO NOT need to install CEDET.
 
-   If you do want to use CEDET, add the following to your .emacs file:
-
-   (matlab-cedet-setup)
+     If you do want to use CEDET, add the following to your .emacs file:
+     #+BEGIN_SRC elisp
+    (matlab-cedet-setup)
+     #+END_SRC
 
 ** New Mailing List
 
@@ -120,27 +126,27 @@ package-list-packages
 
 *** Unable to open .m files in matlab with Emacs
 
-From: Xu He <xuhe01@gmail.com> wrote:
+    From: Xu He <xuhe01@gmail.com> wrote:
 
-Dear all,
+    Dear all,
 
-Following the install guide, I setup the matlab-emacs on my ubuntu 12.04
-system, and I can edit and run the m file with emacs.
+    Following the install guide, I setup the matlab-emacs on my ubuntu 12.04
+    system, and I can edit and run the m file with emacs.
 
-But I can not open nor edit m file with matlab. When I open the file in the matlab window,
-nothing happens.
+    But I can not open nor edit m file with matlab. When I open the file in the matlab window,
+    nothing happens.
 
-I tried to eliminate the lines about matlab-emacs in ~/.emacs file, but the
-problem can not be solved.
+    I tried to eliminate the lines about matlab-emacs in ~/.emacs file, but the
+    problem can not be solved.
 
-I need to edit and run the file in matlab. Thanks for any help.
+    I need to edit and run the file in matlab. Thanks for any help.
 
-Best regards,
-Xu He
+    Best regards,
+    Xu He
 
 *** Solution 
 
-From: Hunter McClelland [mailto:hunter.mcclelland@gmail.com]
-Till we discovered that Matlab-emacs changes the "Editor" matlab uses.
-Go to Preferences->Editor/debugger and change the Editor back to
-"MATLAB Editor".
+    From: Hunter McClelland [mailto:hunter.mcclelland@gmail.com]
+    Till we discovered that Matlab-emacs changes the "Editor" matlab uses.
+    Go to Preferences->Editor/debugger and change the Editor back to
+    "MATLAB Editor".
