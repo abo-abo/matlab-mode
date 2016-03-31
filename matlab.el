@@ -2286,7 +2286,7 @@ Argument CURRENT-INDENTATION is what the previous line recommends for indentatio
                             (setq cc (+ ci (if (listp (cdr mi))
                                                (cdr (cdr mi))
                                              (cdr mi)))))
-                        cc))))))))))) 
+                        cc)))))))))))
 
 (defun matlab-next-line-indentation ()
   "Calculate the indentation for lines following this command line.
@@ -3468,7 +3468,7 @@ BUFF-WHEN-LAUNCHED is the buffer that was active when the timer was set."
                                            'face 'matlab-region-face)))
                         (error (message "Unstarted block at cursor."))))))))))))
 
-;;* M Block Folding with hideshow 
+;;* M Block Folding with hideshow
 (defun matlab-hideshow-forward-sexp-func (arg)
   "Move forward one sexp for hideshow.
 Argument ARG specifies the number of blocks to move forward."
@@ -4738,20 +4738,22 @@ This command requires an active MATLAB shell."
 (defun matlab-shell-run-cell ()
   "Run the cell the cursor is in."
   (interactive)
-  (let ((start (save-excursion (forward-page -1)
-                               (if (looking-at "function")
-                                   (error "You are not in a cell.  Try `matlab-shell-save-and-go' instead"))
-                               (when (matlab-ltype-comm)
-                                 ;; Skip over starting comment from the current cell.
-                                 (matlab-end-of-command 1)
-                                 (end-of-line)
-                                 (forward-char 1))
-                               (point)))
-        (end (save-excursion (forward-page 1)
-                             (when (matlab-ltype-comm)
-                               (beginning-of-line)
-                               (forward-char -1))
-                             (point))))
+  (let ((start (save-excursion
+                 (forward-page -1)
+                 (if (looking-at "function")
+                     (error "You are not in a cell.  Try `matlab-shell-save-and-go' instead"))
+                 (when (matlab-ltype-comm)
+                   ;; Skip over starting comment from the current cell.
+                   (matlab-end-of-command 1)
+                   (end-of-line)
+                   (forward-char 1))
+                 (point)))
+        (end (save-excursion
+               (forward-page 1)
+               (when (matlab-ltype-comm)
+                 (beginning-of-line)
+                 (forward-char -1))
+               (point))))
     (matlab-shell-run-region start end t)))
 
 (defun matlab-shell-run-region-or-line ()
@@ -4763,9 +4765,8 @@ This command requires an active MATLAB shell."
       (matlab-shell-run-region (mark) (point))
     (matlab-shell-run-region (line-beginning-position) (line-end-position))))
 
-
-;;; MATLAB Shell Commands =====================================================
 
+;;* MATLAB Shell Commands
 (defun matlab-read-word-at-point ()
   "Get the word closest to point, but do not change position.
 Has a preference for looking backward when not directly on a symbol.
@@ -4933,15 +4934,16 @@ indication that it ran."
       (save-excursion
         (goto-char pos)
         (beginning-of-line)
-        (setq str (buffer-substring-no-properties (save-excursion
-                                                    (goto-char pos)
-                                                    (beginning-of-line)
-                                                    (forward-line 1)
-                                                    (point))
-                                                  (save-excursion
-                                                    (goto-char (point-max))
-                                                    (beginning-of-line)
-                                                    (point))))
+        (setq str (buffer-substring-no-properties
+                   (save-excursion
+                     (goto-char pos)
+                     (beginning-of-line)
+                     (forward-line 1)
+                     (point))
+                   (save-excursion
+                     (goto-char (point-max))
+                     (beginning-of-line)
+                     (point))))
         (delete-region pos (point-max)))
       (insert lastcmd))
     str))
@@ -4991,12 +4993,13 @@ show up in reverse order."
   "Find file EF in other window and to go line EL and 1-basec column EC.
 If DEBUG is non-nil, then setup GUD debugging features."
   (cond ((file-exists-p ef)
-         nil);; keep ef the same
+         ;; keep ef the same
+         nil)
         ((file-exists-p (concat ef ".m"))
-         (setq ef (concat ef ".m"))) ;; Displayed w/out .m?
+         ;; Displayed w/out .m?
+         (setq ef (concat ef ".m")))
         ((string-match ">" ef)
-         (setq ef (concat (substring ef 0 (match-beginning 0)) ".m")))
-        )
+         (setq ef (concat (substring ef 0 (match-beginning 0)) ".m"))))
   (find-file-other-window ef)
   (goto-line (string-to-number el))
   (when debug
@@ -5085,9 +5088,8 @@ To reference old errors, put the cursor just after the error text."
   (comint-send-string (get-buffer-process (current-buffer)) "exit\n")
   (kill-buffer nil))
 
-
-;;; matlab-shell based Topic Browser and Help =================================
 
+;;* matlab-shell based Topic Browser and Help
 (defcustom matlab-shell-topic-mode-hook nil
   "MATLAB shell topic hook."
   :type 'hook)
@@ -5110,7 +5112,8 @@ Maintain state in our topic browser buffer."
       (matlab-shell-topic-browser-create-contents ""))))
 
 (defvar matlab-shell-topic-mouse-face-keywords
-  '(;; These are subtopic fields...
+  '(
+    ;; These are subtopic fields...
     ("^\\(\\w+/\\w+\\)[ \t]+-" 1 font-lock-reference-face)
     ;; These are functions...
     ("^[ \t]+\\(\\w+\\)[ \t]+-" 1 font-lock-function-name-face)
@@ -5123,13 +5126,13 @@ Maintain state in our topic browser buffer."
   (append matlab-shell-topic-mouse-face-keywords
           '(("^[^:\n]+:$" 0 font-lock-keyword-face)
             ;; These are subheadings...
-            ("^[ \t]+\\([^.\n]+[a-zA-Z.]\\)$" 1 'underline)
-            ))
+            ("^[ \t]+\\([^.\n]+[a-zA-Z.]\\)$" 1 'underline)))
   "Keywords useful for highlighting a MATLAB TOPIC buffer.")
 
 (defvar matlab-shell-help-font-lock-keywords
   (append matlab-shell-topic-mouse-face-keywords
-          '(;; Function call examples
+          '(
+            ;; Function call examples
             ("[ \t]\\([A-Z]+\\)\\s-*=\\s-*\\([A-Z]+[0-9]*\\)("
              (1 font-lock-variable-name-face)
              (2 font-lock-function-name-face))
@@ -5138,18 +5141,12 @@ Maintain state in our topic browser buffer."
             ;; Parameters: Not very accurate, unfortunately.
             ("[ \t]\\([A-Z]+[0-9]*\\)("
              ("'?\\(\\w+\\)'?\\([,)]\\) *" nil nil
-              (1 font-lock-variable-name-face))
-             )
+              (1 font-lock-variable-name-face)))
             ;; Reference uppercase words
             ("\\<\\([A-Z]+[0-9]*\\)\\>" 1 font-lock-reference-face)))
   "Keywords for regular help buffers.")
 
-;; View-major-mode is an emacs20 thing.  This gives us a small compatibility
-;; layer.
-(if (not (fboundp 'view-major-mode)) (defalias 'view-major-mode 'view-mode))
-
-(define-derived-mode matlab-shell-help-mode
-    view-major-mode "M-Help"
+(define-derived-mode matlab-shell-help-mode view-major-mode "M-Help"
   "Major mode for viewing MATLAB help text.
 Entry to this mode runs the normal hook `matlab-shell-help-mode-hook'.
 
@@ -5163,20 +5160,15 @@ Commands:
   (and (boundp 'global-font-lock-mode) global-font-lock-mode
        (not font-lock-mode) (font-lock-mode 1))
   (easy-menu-add matlab-shell-help-mode-menu matlab-shell-help-mode-map)
-  (matlab-shell-topic-mouse-highlight-subtopics)
-  )
+  (matlab-shell-topic-mouse-highlight-subtopics))
 
 (define-key matlab-shell-help-mode-map [return] 'matlab-shell-topic-choose)
 (define-key matlab-shell-help-mode-map "t" 'matlab-shell-topic-browser)
 (define-key matlab-shell-help-mode-map "q" 'bury-buffer)
-(define-key matlab-shell-help-mode-map
-    [(control h) (control m)] matlab-help-map)
-(if (string-match "XEmacs" emacs-version)
-    (define-key matlab-shell-help-mode-map [button2] 'matlab-shell-topic-click)
-  (define-key matlab-shell-help-mode-map [mouse-2] 'matlab-shell-topic-click))
+(define-key matlab-shell-help-mode-map [(control h) (control m)] matlab-help-map)
+(define-key matlab-shell-help-mode-map [mouse-2] 'matlab-shell-topic-click)
 
-(easy-menu-define
-    matlab-shell-help-mode-menu matlab-shell-help-mode-map
+(easy-menu-define matlab-shell-help-mode-menu matlab-shell-help-mode-map
   "MATLAB shell topic menu"
   '("MATLAB Help"
     ["Describe This Command" matlab-shell-topic-choose t]
@@ -5188,8 +5180,7 @@ Commands:
     "----"
     ["Exit" bury-buffer t]))
 
-(define-derived-mode matlab-shell-topic-mode
-    matlab-shell-help-mode "M-Topic"
+(define-derived-mode matlab-shell-topic-mode matlab-shell-help-mode "M-Topic"
   "Major mode for browsing MATLAB HELP topics.
 The output of the MATLAB command HELP with no parameters creates a listing
 of known help topics at a given installation.  This mode parses that listing
@@ -5200,13 +5191,9 @@ Commands:
 \\{matlab-shell-topic-mode-map}"
   (setq font-lock-defaults '((matlab-shell-topic-font-lock-keywords)
                              t t ((?_ . "w"))))
-  (if (string-match "XEmacs" emacs-version)
-      (setq mode-motion-hook 'matlab-shell-topic-highlight-line))
-  (easy-menu-add matlab-shell-topic-mode-menu matlab-shell-topic-mode-map)
-  )
+  (easy-menu-add matlab-shell-topic-mode-menu matlab-shell-topic-mode-map))
 
-(easy-menu-define
-    matlab-shell-topic-mode-menu matlab-shell-topic-mode-map
+(easy-menu-define matlab-shell-topic-mode-menu matlab-shell-topic-mode-map
   "MATLAB shell topic menu"
   '("MATLAB Topic"
     ["Select This Topic" matlab-shell-topic-choose t]
@@ -5225,8 +5212,7 @@ Commands:
   (setq matlab-shell-topic-current-topic subtopic)
   (if (not (string-match "XEmacs" emacs-version))
       (matlab-shell-topic-mouse-highlight-subtopics))
-  (toggle-read-only 1)
-  )
+  (toggle-read-only 1))
 
 (defun matlab-shell-topic-click (e)
   "Click on an item in a MATLAB topic buffer we want more information on.
@@ -5260,8 +5246,7 @@ buffer."
     (message "Opening item %s..." (or topic fun))
     (if topic
         (matlab-shell-topic-browser-create-contents (downcase topic))
-      (matlab-shell-describe-command fun))
-    ))
+      (matlab-shell-describe-command fun))))
 
 (defun matlab-shell-topic-mouse-highlight-subtopics ()
   "Put a `mouse-face' on all clickable targets in this buffer."
@@ -5280,31 +5265,7 @@ buffer."
                                    'mouse-face 'highlight)))))
         (setq el (cdr el))))))
 
-(defun matlab-shell-topic-highlight-line (event)
-  "A value of `mode-motion-hook' which will highlight topics under the mouse.
-EVENT is the user mouse event."
-  ;; XEMACS only function
-  (let* ((buffer (event-buffer event))
-         (point (and buffer (event-point event))))
-    (if (and buffer (not (eq buffer mouse-grabbed-buffer)))
-        (save-excursion
-          (save-window-excursion
-            (set-buffer buffer)
-            (mode-motion-ensure-extent-ok event)
-            (if (not point)
-                (detach-extent mode-motion-extent)
-              (goto-char point)
-              (end-of-line)
-              (setq point (point))
-              (beginning-of-line)
-              (if (or (looking-at "^\\w+/\\(\\w+\\)[ \t]+-")
-                      (looking-at "^[ \t]+\\(\\(\\w\\|_\\)+\\)[ \t]+-"))
-                  (set-extent-endpoints mode-motion-extent (point) point)
-                (detach-extent mode-motion-extent))))))))
-
-
-;;; M File path stuff =========================================================
-
+;;* M File path stuff
 (defun matlab-mode-determine-mfile-path ()
   "Create the path in `matlab-mode-install-path'."
   (let ((path (file-name-directory matlab-shell-command)))
@@ -5395,9 +5356,7 @@ Check `matlab-mode-install-path'" filename))))
     (if (not f) (error "To find an M file, click on a word"))
     (matlab-find-file-on-path f)))
 
-
-;;; matlab-mode debugging =====================================================
-
+;;* matlab-mode debugging
 (defun matlab-show-line-info ()
   "Display type and attributes of current line.  Used in debugging."
   (interactive)
