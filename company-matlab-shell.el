@@ -28,7 +28,7 @@
   (let ((inhibit-field-text-motion t))
     (beginning-of-line))
   (re-search-forward comint-prompt-regexp)
-  (let* ((lastcmd (buffer-substring (point) (matlab-point-at-eol)))
+  (let* ((lastcmd (buffer-substring (point) (line-end-position)))
          (tempcmd lastcmd)
          (completions nil)
          (limitpos nil))
@@ -39,7 +39,7 @@
             0))
     (setq lastcmd (substring lastcmd limitpos))
     ;; Whack the old command so we can insert it back later.
-    (delete-region (+ (point) limitpos) (matlab-point-at-eol))
+    (delete-region (+ (point) limitpos) (line-end-position))
     ;; double every single quote
     (while (string-match "[^']\\('\\)\\($\\|[^']\\)" tempcmd)
       (setq tempcmd (replace-match "''" t t tempcmd 1)))
@@ -56,7 +56,7 @@
       (let ((inhibit-field-text-motion t))
         (beginning-of-line))
       (re-search-forward comint-prompt-regexp)
-      (let* ((lastcmd (buffer-substring (point) (matlab-point-at-eol)))
+      (let* ((lastcmd (buffer-substring (point) (line-end-position)))
              limitpos)
         (setq limitpos
               (if (string-match ".*\\([( /[,;=']\\)" lastcmd)
