@@ -325,34 +325,17 @@ Valid values are:
 (defcustom matlab-return-add-semicolon nil
   "If non nil, check to see a semicolon is needed when RET is pressed."
   :type 'boolean)
-
 (make-variable-buffer-local 'matlab-return-add-semicolon)
 
 (defcustom matlab-change-current-directory nil
   "If non nil, make file's directory the current directory when
 evaluating it."
   :type 'boolean)
-
 (make-variable-buffer-local 'matlab-change-current-directory)
 
-;; Load in the region we use for highlighting stuff.
-(if (and (featurep 'custom) (fboundp 'custom-declare-variable))
-
-    (let ((l-region-face (if (facep 'region) 'region 'zmacs-region)))
-      ;; If we have custom, we can make our own special face like this
-      (defface matlab-region-face
-	(list
-	 (list t
-	       (list :background (face-background l-region-face)
-		     :foreground (face-foreground l-region-face))))
-	"Face used to highlight a matlab region."
-	:group 'matlab))
-
-  ;; If we do not, then we can fake it by copying 'region.
-  (cond ((facep 'region)
-	 (copy-face 'region 'matlab-region-face))
-	(t
-	 (copy-face 'zmacs-region 'matlab-region-face))))
+(defface matlab-region-face
+  '((t :inherit region))
+  "Face used to highlight a matlab region.")
 
 (defvar matlab-unterminated-string-face 'matlab-unterminated-string-face
   "Self reference for unterminated string face.")
@@ -369,77 +352,51 @@ evaluating it."
 (defvar matlab-cellbreak-face 'matlab-cellbreak-face
   "Self reference for cellbreaks.")
 
-(defun matlab-font-lock-adjustments ()
-  "Make adjustments for font lock.
-If font lock is not loaded, lay in wait."
-  (defface matlab-unterminated-string-face
-    (list
-     (list t
-           (list :background (face-background font-lock-string-face)
-                 :foreground (face-foreground font-lock-string-face)
-                 :underline t)))
-    "Face used to highlight unterminated strings."
-    :group 'matlab)
-  (defface matlab-simulink-keyword-face
-    (list
-     (list t
-           (list :background (face-background font-lock-type-face)
-                 :foreground (face-foreground font-lock-type-face)
-                 :underline t)))
-    "Face used to highlight simulink specific functions."
-    :group 'matlab)
-  (defface matlab-nested-function-keyword-face
-    (list
-     (list t
-           (list :slant 'italic)))
-    "Face to use for cross-function variables.")
-  (defface matlab-cross-function-variable-face
-    (list
-     (list t
-           (list :weight 'bold
-                 :slant 'italic)))
-    "Face to use for cross-function variables."
-    :group 'matlab)
-  (defface matlab-cellbreak-face
-    (list
-     (list t
-           (list :background (face-background font-lock-comment-face)
-                 :foreground (face-foreground font-lock-comment-face)
-                 :overline t
-                 :bold t)))
-    "Face to use for cellbreak %% lines.")
-  (remove-hook 'font-lock-mode-hook 'matlab-font-lock-adjustments))
+(defface matlab-unterminated-string-face
+  '((t :inherit font-lock-string-face :underline t))
+  "Face used to highlight unterminated strings.")
 
-;; Make the adjustments for font lock after it's loaded.
-;; I found that eval-after-load was unreliable.
-(if (featurep 'font-lock)
-    (matlab-font-lock-adjustments)
-  (add-hook 'font-lock-mode-hook 'matlab-font-lock-adjustments))
+(defface matlab-simulink-keyword-face
+  '((t :inherit font-lock-type-face :underline t))
+  "Face used to highlight simulink specific functions.")
 
-
-;;; MATLAB mode variables =====================================================
+(defface matlab-nested-function-keyword-face
+  '((t :inherit default :slant italic))
+  "Face to use for cross-function variables.")
 
+(defface matlab-cross-function-variable-face
+  '((t :inherit default :weight bold :slant italic))
+  "Face to use for cross-function variables.")
+
+(defface matlab-cellbreak-face
+  '((t
+     :inherit font-lock-comment-face
+     :overline t
+     :bold t))
+  "Face to use for cellbreak %% lines.")
+
+;;* Variables
 (defvar matlab-tempo-tags nil
   "List of templates used in MATLAB mode.")
 
 ;; syntax table
 (defvar matlab-mode-syntax-table
   (let ((st (make-syntax-table (standard-syntax-table))))
-    (modify-syntax-entry ?_  "_" st)
-    (modify-syntax-entry ?%  "<" st)
+    (modify-syntax-entry ?_ "_" st)
+    (modify-syntax-entry ?% "<" st)
     (modify-syntax-entry ?\n ">" st)
     (modify-syntax-entry ?\\ "." st)
     (modify-syntax-entry ?\t " " st)
-    (modify-syntax-entry ?+  "." st)
-    (modify-syntax-entry ?-  "." st)
-    (modify-syntax-entry ?*  "." st)
-    (modify-syntax-entry ?'  "." st)
-    (modify-syntax-entry ?/  "." st)
-    (modify-syntax-entry ?=  "." st)
-    (modify-syntax-entry ?<  "." st)
-    (modify-syntax-entry ?>  "." st)
-    (modify-syntax-entry ?&  "." st)
-    (modify-syntax-entry ?|  "." st)
+    (modify-syntax-entry ?+ "." st)
+    (modify-syntax-entry ?- "." st)
+    (modify-syntax-entry ?* "." st)
+    (modify-syntax-entry ?\' "." st)
+    (modify-syntax-entry ?/ "." st)
+    (modify-syntax-entry ?= "." st)
+    (modify-syntax-entry ?< "." st)
+    (modify-syntax-entry ?> "." st)
+    (modify-syntax-entry ?& "." st)
+    (modify-syntax-entry ?| "." st)
     st)
   "The syntax table used in `matlab-mode' buffers.")
 
