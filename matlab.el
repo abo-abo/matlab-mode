@@ -4117,7 +4117,24 @@ This name will have *'s surrounding it.")
 	(if (comint-check-proc (current-buffer))
 	    (current-buffer)))))
 
-(defvar matlab-shell-mode-map ()
+(defvar matlab-shell-mode-map
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map comint-mode-map)
+    (substitute-key-definition
+     'next-error 'matlab-shell-last-error
+     map global-map)
+    (define-key map (kbd "C-h C-m") matlab-help-map)
+    (define-key map (kbd "C-c .") 'matlab-find-file-on-path)
+    (define-key map (kbd "TAB") 'matlab-shell-tab)
+    (define-key map (kbd "C-i") 'matlab-shell-tab)
+    (define-key map (kbd "C-<up>") 'comint-previous-matching-input-from-input)
+    (define-key map (kbd "C-<down>") 'comint-next-matching-input-from-input)
+    (define-key map (kbd "<up>") 'matlab-shell-previous-matching-input-from-input)
+    (define-key map (kbd "<down>") 'matlab-shell-next-matching-input-from-input)
+    (define-key map (kbd "C-RET") 'comint-kill-input)
+    (define-key map (kbd "C-?") 'matlab-shell-delete-backwards-no-prompt)
+    (define-key map (kbd "DEL") 'matlab-shell-delete-backwards-no-prompt)
+    map)
   "Keymap used in `matlab-shell-mode'.")
 
 (defvar matlab-shell-font-lock-keywords-1
@@ -4149,7 +4166,7 @@ a console application."
   ;; permit it's operation when the shell command string is different from
   ;; the default value.  (True when the engine program is running.)
   (if (and (or (eq window-system 'pc) (eq window-system 'w32))
-	   (string= matlab-shell-command "matlab"))
+           (string= matlab-shell-command "matlab"))
       (error "MATLAB cannot be run as a inferior process.  \
 Try C-h f matlab-shell RET"))
 
@@ -4168,36 +4185,6 @@ Try C-h f matlab-shell RET"))
       nil
     ;; Clean up crufty state
     (kill-all-local-variables)
-    ;; Build keymap here in case someone never uses comint mode
-    (if matlab-shell-mode-map
-	()
-      (setq matlab-shell-mode-map
-	    (let ((km (make-sparse-keymap 'matlab-shell-mode-map)))
-	      (if (fboundp 'set-keymap-parent)
-		  (set-keymap-parent km comint-mode-map)
-		;; 19.31 doesn't have set-keymap-parent
-		(setq km (nconc km comint-mode-map)))
-	      (substitute-key-definition 'next-error 'matlab-shell-last-error
-					 km global-map)
-	      (define-key km [(control h) (control m)]
-		matlab-help-map)
-              (define-key km "\C-c." 'matlab-find-file-on-path)
-	      (define-key km (kbd "TAB") 'matlab-shell-tab)
-	      (define-key km "\C-i" 'matlab-shell-tab)
-	      (define-key km [(control up)]
-		'comint-previous-matching-input-from-input)
-	      (define-key km [(control down)]
-		'comint-next-matching-input-from-input)
-	      (define-key km [up]
-		'matlab-shell-previous-matching-input-from-input)
-	      (define-key km [down]
-		'matlab-shell-next-matching-input-from-input)
-	      (define-key km [(control return)] 'comint-kill-input)
-	      (define-key km "\C-?"
-		'matlab-shell-delete-backwards-no-prompt)
-	      (define-key km [(backspace)]
-		'matlab-shell-delete-backwards-no-prompt)
-	      km)))
     (switch-to-buffer
      ;; Thx David Chappaz for reminding me about this patch.
      (let* ((windowid (frame-parameter (selected-frame) 'outer-window-id))
@@ -4210,20 +4197,20 @@ Try C-h f matlab-shell RET"))
     (comint-mode)
 
     (if matlab-shell-enable-gud-flag
-	(progn
-	  (gud-mode)
+        (progn
+          (gud-mode)
           (make-local-variable 'matlab-prompt-seen)
           (setq matlab-prompt-seen nil)
-	  (make-local-variable 'gud-marker-filter)
-	  (setq gud-marker-filter 'gud-matlab-marker-filter)
-	  (make-local-variable 'gud-find-file)
-	  (setq gud-find-file 'gud-matlab-find-file)
+          (make-local-variable 'gud-marker-filter)
+          (setq gud-marker-filter 'gud-matlab-marker-filter)
+          (make-local-variable 'gud-find-file)
+          (setq gud-find-file 'gud-matlab-find-file)
 
-	  (set-process-filter (get-buffer-process (current-buffer))
-			      'gud-filter)
-	  (set-process-sentinel (get-buffer-process (current-buffer))
-				'gud-sentinel)
-	  (gud-set-buffer))
+          (set-process-filter (get-buffer-process (current-buffer))
+                              'gud-filter)
+          (set-process-sentinel (get-buffer-process (current-buffer))
+                                'gud-sentinel)
+          (gud-set-buffer))
       ;; What to do when there is no GUD
                                         ;(set-process-filter (get-buffer-process (current-buffer))
                                         ;		  'matlab-shell-process-filter)
@@ -4308,12 +4295,11 @@ in a popup buffer.
 > Keymap:
 \\{matlab-mode-map}"
   (setq major-mode 'matlab-shell-mode
-	mode-name "M-Shell"
-	comint-prompt-regexp "^\\(K\\|EDU\\)?>> *"
-	comint-delimiter-argument-list (list [ 59 ]) ; semi colon
-	comint-dynamic-complete-functions '(comint-replace-by-expanded-history)
-	comint-process-echoes matlab-shell-echoes
-	)
+        mode-name "M-Shell"
+        comint-prompt-regexp "^\\(K\\|EDU\\)?>> *"
+        comint-delimiter-argument-list (list [59]) ; semi colon
+        comint-dynamic-complete-functions '(comint-replace-by-expanded-history)
+        comint-process-echoes matlab-shell-echoes)
   ;; matlab-shell variable setup
   (make-local-variable 'matlab-shell-last-error-anchor)
   (setq matlab-shell-last-error-anchor nil)
@@ -4324,8 +4310,8 @@ in a popup buffer.
       (add-hook 'comint-input-filter-functions 'shell-directory-tracker nil t)) ;; patch Eli Merriam
   ;; Add a spiffy logo if we are running XEmacs
   (if (and (string-match "XEmacs" emacs-version)
-	   (stringp matlab-shell-logo)
-	   (file-readable-p matlab-shell-logo))
+           (stringp matlab-shell-logo)
+           (file-readable-p matlab-shell-logo))
       (add-hook 'comint-output-filter-functions 'matlab-shell-hack-logo))
   ;; Add a version scraping logo identification filter.
   (add-hook 'comint-output-filter-functions 'matlab-shell-version-scrape)
@@ -4342,9 +4328,9 @@ in a popup buffer.
   (set-syntax-table matlab-mode-syntax-table)
   (make-local-variable 'font-lock-defaults)
   (setq font-lock-defaults '((matlab-shell-font-lock-keywords-1
-			      matlab-shell-font-lock-keywords-2
-			      matlab-shell-font-lock-keywords-3)
-			     t nil ((?_ . "w"))))
+                              matlab-shell-font-lock-keywords-2
+                              matlab-shell-font-lock-keywords-3)
+                             t nil ((?_ . "w"))))
   (set (make-local-variable 'comint-input-ring-size)
        matlab-shell-input-ring-size)
   (set (make-local-variable 'comint-input-ring-file-name)
@@ -4380,32 +4366,30 @@ in a popup buffer.
 
   (if matlab-shell-enable-gud-flag
       (progn
-	(gud-def gud-break  "dbstop at %l in %f"  "\C-b" "Set breakpoint at current line.")
-	(gud-def gud-remove "dbclear at %l in %f" "\C-d" "Remove breakpoint at current line")
-	(gud-def gud-step   "dbstep in;\ndbhotlink(1)"           "\C-s" "Step one source line, possibly into a function.")
-	(gud-def gud-next   "dbstep %p;\ndbhotlink(1)"           "\C-n" "Step over one source line.")
-	(gud-def gud-cont   "dbcont;\ndbhotlink(1)"              "\C-r" "Continue with display.")
-	(gud-def gud-finish "dbquit"              "\C-f" "Finish executing current function.")
-	;; (gud-def gud-up     "dbup %p;\ndbhotlink()"             "<"    "Up N stack frames (numeric arg).")
-	;; (gud-def gud-down   "dbdown %p;\ndbhotlink()"           ">"    "Down N stack frames (numeric arg).")
-	(gud-def gud-up     "dbup;\n[~,a___]=dbstack;\ndbhotlink(a___)"             "<"    "Up N stack frames (numeric arg).")
-	(gud-def gud-down   "dbdown;\n[~,a___]=dbstack;\ndbhotlink(a___)"           ">"    "Down N stack frames (numeric arg).")
-	(gud-def gud-print  "%e"                  "\C-p" "Evaluate M expression at point.")
-	(if (fboundp 'gud-make-debug-menu)
-	    (gud-make-debug-menu))
-	(if (fboundp 'gud-overload-functions)
-	    (gud-overload-functions
-	     '((gud-massage-args . gud-matlab-massage-args)
-	       (gud-marker-filter . gud-matlab-marker-filter)
-	       (gud-find-file . gud-matlab-find-file))))
-	;; XEmacs doesn't seem to have this concept already.  Oh well.
-	(setq gud-marker-acc nil)
-	;; XEmacs has problems w/ this variable.  Set it here.
-	(set-marker comint-last-output-start (point-max))
-	))
+        (gud-def gud-break "dbstop at %l in %f" "\C-b" "Set breakpoint at current line.")
+        (gud-def gud-remove "dbclear at %l in %f" "\C-d" "Remove breakpoint at current line")
+        (gud-def gud-step "dbstep in;\ndbhotlink(1)" "\C-s" "Step one source line, possibly into a function.")
+        (gud-def gud-next "dbstep %p;\ndbhotlink(1)" "\C-n" "Step over one source line.")
+        (gud-def gud-cont "dbcont;\ndbhotlink(1)" "\C-r" "Continue with display.")
+        (gud-def gud-finish "dbquit" "\C-f" "Finish executing current function.")
+        ;; (gud-def gud-up     "dbup %p;\ndbhotlink()"             "<"    "Up N stack frames (numeric arg).")
+        ;; (gud-def gud-down   "dbdown %p;\ndbhotlink()"           ">"    "Down N stack frames (numeric arg).")
+        (gud-def gud-up "dbup;\n[~,a___]=dbstack;\ndbhotlink(a___)" "<" "Up N stack frames (numeric arg).")
+        (gud-def gud-down "dbdown;\n[~,a___]=dbstack;\ndbhotlink(a___)" ">" "Down N stack frames (numeric arg).")
+        (gud-def gud-print "%e" "\C-p" "Evaluate M expression at point.")
+        (if (fboundp 'gud-make-debug-menu)
+            (gud-make-debug-menu))
+        (if (fboundp 'gud-overload-functions)
+            (gud-overload-functions
+             '((gud-massage-args . gud-matlab-massage-args)
+               (gud-marker-filter . gud-matlab-marker-filter)
+               (gud-find-file . gud-matlab-find-file))))
+        ;; XEmacs doesn't seem to have this concept already.  Oh well.
+        (setq gud-marker-acc nil)
+        ;; XEmacs has problems w/ this variable.  Set it here.
+        (set-marker comint-last-output-start (point-max))))
   (run-hooks 'matlab-shell-mode-hook)
-  (matlab-show-version)
-  )
+  (matlab-show-version))
 
 (defvar gud-matlab-marker-regexp-prefix "error:\\|opentoline"
   "A prefix to scan for to know if output might be scarfed later.")
