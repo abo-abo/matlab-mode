@@ -67,19 +67,18 @@
       (defalias 'matlab-previous-overlay-change 'previous-extent-change)
       (defalias 'matlab-next-overlay-change 'next-extent-change)
       (defalias 'matlab-overlays-at
-	(lambda (pos) (extent-list nil pos pos)))
+          (lambda (pos) (extent-list nil pos pos)))
       (defalias 'matlab-cancel-timer 'delete-itimer)
       (defun matlab-run-with-idle-timer (secs repeat function &rest args)
-	(condition-case nil
-	    (apply 'start-itimer
-		   "matlab" function secs
-		   (if repeat secs nil) t
-		   t (car args))
-	  (error
-	   ;; If the above doesn't work, then try this old version of
-	   ;; start itimer.
-	   (start-itimer "matlab" function secs (if repeat secs nil)))))
-      )
+        (condition-case nil
+            (apply 'start-itimer
+                   "matlab" function secs
+                   (if repeat secs nil) t
+                   t (car args))
+          (error
+           ;; If the above doesn't work, then try this old version of
+           ;; start itimer.
+           (start-itimer "matlab" function secs (if repeat secs nil))))))
   (defalias 'matlab-make-overlay 'make-overlay)
   (defalias 'matlab-overlay-put 'overlay-put)
   (defalias 'matlab-overlay-get 'overlay-get)
@@ -90,8 +89,7 @@
   (defalias 'matlab-next-overlay-change 'next-overlay-change)
   (defalias 'matlab-overlays-at 'overlays-at)
   (defalias 'matlab-cancel-timer 'cancel-timer)
-  (defalias 'matlab-run-with-idle-timer 'run-with-idle-timer)
-  )
+  (defalias 'matlab-run-with-idle-timer 'run-with-idle-timer))
 
 (cond ((fboundp 'point-at-bol)
        (defalias 'matlab-point-at-bol 'point-at-bol)
@@ -102,15 +100,15 @@
        (defalias 'matlab-point-at-eol 'line-end-position))
       (t
        (defmacro matlab-point-at-bol ()
-	 (save-excursion (beginning-of-line) (point)))
+         (save-excursion (beginning-of-line) (point)))
        (defmacro matlab-point-at-eol ()
-	 (save-excursion (end-of-line) (point)))))
+         (save-excursion (end-of-line) (point)))))
 
 (defmacro matlab-run-in-matlab-mode-only (&rest body)
   "Execute BODY only if the active buffer is a MATLAB(R) M-file buffer."
   `(if (eq major-mode 'matlab-mode)
        (progn
-	,@body)
+         ,@body)
      (error "This command works only in a MATLAB M-file buffer")))
 
 (defun matlab-with-emacs-link ()

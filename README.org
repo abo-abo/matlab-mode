@@ -1,19 +1,16 @@
 * Matlab-emacs Project:
-
   MATLAB and Emacs integration
-
 ** INSTALL
+Add the following to your .emacs file:
 
-   Add the following to your .emacs file:
+#+begin_src elisp
+;; Replace path below to be where your matlab.el file is.
+(add-to-list 'load-path "~/path/to/matlab-emacs")
+(load-library "matlab-load")
 
-   #+BEGIN_SRC elisp
-  ;; Replace path below to be where your matlab.el file is.
-  (add-to-list 'load-path "~/path/to/matlab-emacs")
-  (load-library "matlab-load")
-
-  ;; Enable CEDET feature support for MATLAB code. (Optional)
-  ;; (matlab-cedet-setup)
-   #+END_SRC
+;; Enable CEDET feature support for MATLAB code. (Optional)
+;; (matlab-cedet-setup)
+#+end_src
 
 ** MELPA
 
@@ -21,10 +18,10 @@
    package as provided by MELPA.
    Set 
 
-   #+BEGIN_SRC elisp
+   #+begin_src elisp
 (add-to-list 'package-archives
              '("melpa" . "http://melpa.org/packages/") t)
-   #+END_SRC
+   #+end_src
    And then run 
    M-x
    package-list-packages
@@ -72,9 +69,9 @@
 
    You need a git client on your machine. Then just run
 
-   #+BEGIN_SRC shell
+   #+begin_src shell
    git clone git://git.code.sf.net/p/matlab-emacs/src matlab-emacs-src
-   #+END_SRC
+   #+end_src
 
    If you do not have a GIT client on your machine, you can use the
    MATLAB script dl_emacs_support.m to download a fresh copy of the
@@ -101,9 +98,9 @@
      MATLAB shell, you DO NOT need to install CEDET.
 
      If you do want to use CEDET, add the following to your .emacs file:
-     #+BEGIN_SRC elisp
+     #+begin_src elisp
     (matlab-cedet-setup)
-     #+END_SRC
+     #+end_src
 
 ** New Mailing List
 

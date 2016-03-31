@@ -23,46 +23,46 @@
 
 ;; the following code is mostly taken from matlab.el, (C) Eric M. Ludlam
 (defun company-matlab-shell-tab ()
-   "Send [TAB] to the currently running matlab process and retrieve completion."
-   (goto-char (point-max))
-   (let ((inhibit-field-text-motion t))
-     (beginning-of-line))
-   (re-search-forward comint-prompt-regexp)
-   (let* ((lastcmd (buffer-substring (point) (matlab-point-at-eol)))
-	  (tempcmd lastcmd)
-	  (completions nil)
-	  (limitpos nil))
-     ;; search for character which limits completion, and limit command to it
-     (setq limitpos
-	   (if (string-match ".*\\([( /[,;=']\\)" lastcmd)
-	       (1+ (match-beginning 1))
-	     0))
-     (setq lastcmd (substring lastcmd limitpos))
-     ;; Whack the old command so we can insert it back later.
-     (delete-region (+ (point) limitpos) (matlab-point-at-eol))
-     ;; double every single quote
-     (while (string-match "[^']\\('\\)\\($\\|[^']\\)" tempcmd)
-       (setq tempcmd (replace-match "''" t t tempcmd 1)))
-     ;; collect the list
-     (setq completions (matlab-shell-completion-list tempcmd))
-     (goto-char (point-max))
-     (insert lastcmd)
-     completions))
+  "Send [TAB] to the currently running matlab process and retrieve completion."
+  (goto-char (point-max))
+  (let ((inhibit-field-text-motion t))
+    (beginning-of-line))
+  (re-search-forward comint-prompt-regexp)
+  (let* ((lastcmd (buffer-substring (point) (matlab-point-at-eol)))
+         (tempcmd lastcmd)
+         (completions nil)
+         (limitpos nil))
+    ;; search for character which limits completion, and limit command to it
+    (setq limitpos
+          (if (string-match ".*\\([( /[,;=']\\)" lastcmd)
+              (1+ (match-beginning 1))
+            0))
+    (setq lastcmd (substring lastcmd limitpos))
+    ;; Whack the old command so we can insert it back later.
+    (delete-region (+ (point) limitpos) (matlab-point-at-eol))
+    ;; double every single quote
+    (while (string-match "[^']\\('\\)\\($\\|[^']\\)" tempcmd)
+      (setq tempcmd (replace-match "''" t t tempcmd 1)))
+    ;; collect the list
+    (setq completions (matlab-shell-completion-list tempcmd))
+    (goto-char (point-max))
+    (insert lastcmd)
+    completions))
 
 (defun company-matlab-shell-grab-symbol ()
   (when (string= (buffer-name (current-buffer)) (concat "*" matlab-shell-buffer-name "*"))
     (save-excursion
       (goto-char (point-max))
       (let ((inhibit-field-text-motion t))
-	(beginning-of-line))
+        (beginning-of-line))
       (re-search-forward comint-prompt-regexp)
       (let* ((lastcmd (buffer-substring (point) (matlab-point-at-eol)))
-	     limitpos)
-	(setq limitpos
-	      (if (string-match ".*\\([( /[,;=']\\)" lastcmd)
-		  (1+ (match-beginning 1))
-		0))
-	(substring-no-properties lastcmd limitpos)))))
+             limitpos)
+        (setq limitpos
+              (if (string-match ".*\\([( /[,;=']\\)" lastcmd)
+                  (1+ (match-beginning 1))
+                0))
+        (substring-no-properties lastcmd limitpos)))))
 
 
 (defun company-matlab-shell-get-completions ()
@@ -74,10 +74,10 @@
   "A `company-mode' completion back-end for Matlab-Shell."
   (interactive (list 'interactive))
   (case command
-        ('interactive (company-begin-backend 'company-matlab-shell))
-        ('prefix (company-matlab-shell-grab-symbol))
-        ('candidates (company-matlab-shell-get-completions))
-	('sorted t)))
+    ('interactive (company-begin-backend 'company-matlab-shell))
+    ('prefix (company-matlab-shell-grab-symbol))
+    ('candidates (company-matlab-shell-get-completions))
+    ('sorted t)))
 
 (provide 'company-matlab-shell)
 ;;; company-matlab-shell.el ends here
