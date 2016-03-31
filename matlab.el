@@ -54,19 +54,6 @@
 (require 'tempo)
 (require 'derived)
 
-(defmacro matlab-run-in-matlab-mode-only (&rest body)
-  "Execute BODY only if the active buffer is a MATLAB(R) M-file buffer."
-  `(if (eq major-mode 'matlab-mode)
-       (progn
-         ,@body)
-     (error "This command works only in a MATLAB M-file buffer")))
-
-(defun matlab-with-emacs-link ()
-  "Return non-nil if Emacs Link is running and user wants to use it."
-  (and (featurep 'matlab-eei)
-       matlab-use-eei
-       matlab-eei-process))
-
 ;;; User-changeable variables =================================================
 
 ;; Variables which the user can change
@@ -4051,11 +4038,11 @@ desired.  Optional argument FAST is not used."
     "MATLAB menu"
     '("MATLAB"
       ["Start MATLAB" matlab-shell
-       :active (not (or (matlab-with-emacs-link) (matlab-shell-active-p)))
-       :visible (not (matlab-shell-active-p)) ]
+       :active (not (matlab-shell-active-p))
+       :visible (not (matlab-shell-active-p))]
       ["Switch to MATLAB" matlab-shell
-       :active (and (not (matlab-with-emacs-link)) (matlab-shell-active-p))
-       :visible (matlab-shell-active-p) ]
+       :active (matlab-shell-active-p)
+       :visible (matlab-shell-active-p)]
       ["Save and go" matlab-shell-save-and-go t]
       ["Run Region" matlab-shell-run-region t]
       ["Run Cell" matlab-shell-run-cell t]
@@ -4064,14 +4051,13 @@ desired.  Optional argument FAST is not used."
       ["Find M file" matlab-find-file-on-path t]
       ["Show M-Lint Warnings" matlab-toggle-show-mlint-warnings
        :active (and (locate-library "mlint") (fboundp 'mlint-minor-mode))
-       :style toggle :selected  matlab-show-mlint-warnings
+       :style toggle :selected matlab-show-mlint-warnings
        ]
       ("Auto Fix"
        ["Verify/Fix source" matlab-mode-verify-fix-file t]
        ["Spell check strings" matlab-ispell-strings t]
        ["Spell check comments" matlab-ispell-comments t]
-       ["Quiesce source" matlab-mode-vf-quiesce-buffer t]
-       )
+       ["Quiesce source" matlab-mode-vf-quiesce-buffer t])
       ("Navigate"
        ["Beginning of Command" matlab-beginning-of-command t]
        ["End of Command" matlab-end-of-command t]
@@ -4101,8 +4087,7 @@ desired.  Optional argument FAST is not used."
        ["while end" tempo-template-matlab-while t]
        ["End of block" matlab-insert-end-block t]
        ["Function" tempo-template-matlab-function t]
-       ["Stringify Region" matlab-stringify-region t]
-       )
+       ["Stringify Region" matlab-stringify-region t])
       ("Customize"
                                         ;      ["Auto Fill Counts Elipsis"
                                         ;       (lambda () (setq matlab-fill-count-ellipsis-flag
@@ -4119,35 +4104,33 @@ desired.  Optional argument FAST is not used."
         :style toggle :selected matlab-verify-on-save-flag]
        ["Auto Fill does Code"
         (setq matlab-fill-code (not matlab-fill-code))
-        :style toggle :selected matlab-fill-code ]
+        :style toggle :selected matlab-fill-code]
        ["Periodic Code Details"
         (setq matlab-show-periodic-code-details-flag
               (not matlab-show-periodic-code-details-flag))
-        :style toggle :selected matlab-show-periodic-code-details-flag ]
+        :style toggle :selected matlab-show-periodic-code-details-flag]
        ["Highlight Matching Blocks"
         (matlab-enable-block-highlighting)
         :style toggle :selected (member 'matlab-start-block-highlight-timer
-                                        post-command-hook) ]
+                                        post-command-hook)]
        ["Highlight Cross-Function Variables"
         matlab-toggle-highlight-cross-function-variables
         :active (locate-library "mlint")
-        :style toggle :selected  matlab-highlight-cross-function-variables
+        :style toggle :selected matlab-highlight-cross-function-variables
         ]
        ["Add Needed Semicolon on RET"
         (setq matlab-return-add-semicolon (not matlab-return-add-semicolon))
-        :style toggle :selected  matlab-return-add-semicolon
+        :style toggle :selected matlab-return-add-semicolon
         ]
        ["Customize" (customize-group 'matlab)
         (and (featurep 'custom) (fboundp 'custom-declare-variable))
-        ]
-       )
+        ])
       "----"
       ["Run M Command" matlab-shell-run-command (matlab-shell-active-p)]
       ["Describe Command" matlab-shell-describe-command (matlab-shell-active-p)]
       ["Describe Variable" matlab-shell-describe-variable (matlab-shell-active-p)]
       ["Command Apropos" matlab-shell-apropos (matlab-shell-active-p)]
-      ["Topic Browser" matlab-shell-topic-browser (matlab-shell-active-p)]
-      ))
+      ["Topic Browser" matlab-shell-topic-browser (matlab-shell-active-p)]))
   (easy-menu-add matlab-mode-menu matlab-mode-map))
 
 ;;; MATLAB shell =============================================================
@@ -5046,50 +5029,46 @@ Similar to  `comint-send-input'."
   (if (not (buffer-file-name (current-buffer)))
       (call-interactively 'write-file))
   (let ((fn-name (file-name-sans-extension
-		  (file-name-nondirectory (buffer-file-name))))
-	(msbn (concat "*" matlab-shell-buffer-name "*"))
+                  (file-name-nondirectory (buffer-file-name))))
+        (msbn (concat "*" matlab-shell-buffer-name "*"))
         (dir (file-name-directory buffer-file-name))
         (change-cd matlab-change-current-directory)
-	(param ""))
+        (param ""))
     (save-buffer)
     ;; Do we need parameters?
     (if (save-excursion
-	  (goto-char (point-min))
-	  (end-of-line)
-	  (forward-sexp -1)
-	  (looking-at "([a-zA-Z]"))
-	(setq param (read-string "Parameters: "
-				 (car matlab-shell-save-and-go-history)
-				 'matlab-shell-save-and-go-history)))
-    (if (matlab-with-emacs-link)
-	;; Execute the current file in MATLAB
-	(matlab-eei-run)
+          (goto-char (point-min))
+          (end-of-line)
+          (forward-sexp -1)
+          (looking-at "([a-zA-Z]"))
+        (setq param (read-string "Parameters: "
+                                 (car matlab-shell-save-and-go-history)
+                                 'matlab-shell-save-and-go-history)))
+    ;; No buffer?  Make it!
+    (if (not (get-buffer msbn)) (matlab-shell))
+    ;; Ok, now fun the function in the matlab shell
+    (if (get-buffer-window msbn t)
+        (select-window (get-buffer-window msbn t))
+      (switch-to-buffer (concat "*" matlab-shell-buffer-name "*")))
 
-      ;; No buffer?  Make it!
-      (if (not (get-buffer msbn)) (matlab-shell))
-      ;; Ok, now fun the function in the matlab shell
-      (if (get-buffer-window msbn t)
-	  (select-window (get-buffer-window msbn t))
-	(switch-to-buffer (concat "*" matlab-shell-buffer-name "*")))
+    ;; change current directory?
+    (if change-cd
+        (let ((cmd (progn
+                     (mapc
+                      (lambda (e)
+                        (while (string-match (car e) dir)
+                          (setq dir (replace-match
+                                     (format "', char(%s), '" (cdr e)) t t dir))))
+                      '(("ô" . "244")
+                        ("é" . "233")
+                        ("è" . "232")
+                        ("à" . "224")))
+                     dir)))
+          (matlab-shell-send-string (concat "cd(['" cmd "'])\n"))))
 
-      ;; change current directory?
-      (if change-cd
-          (let ((cmd (progn
-                       (mapc
-                        (lambda (e)
-                          (while (string-match (car e) dir)
-                            (setq dir (replace-match
-                                       (format "', char(%s), '" (cdr e)) t t dir))))
-                        '(("ô" . "244")
-                          ("é" . "233")
-                          ("è" . "232")
-                          ("à" . "224")))
-                       dir)))
-            (matlab-shell-send-string (concat "cd(['" cmd "'])\n"))))
-
-      (let ((cmd (concat fn-name " " param)))
-	(matlab-shell-add-to-input-history cmd)
-	(matlab-shell-send-string (concat cmd "\n"))))))
+    (let ((cmd (concat fn-name " " param)))
+      (matlab-shell-add-to-input-history cmd)
+      (matlab-shell-send-string (concat cmd "\n")))))
 
 (defun matlab-shell-run-region (beg end &optional noshow)
   "Run region from BEG to END and display result in MATLAB shell.
@@ -5099,55 +5078,50 @@ This command requires an active MATLAB shell."
   (if (> beg end) (let (mid) (setq mid beg beg end end mid)))
 
   (let ((command
-	 (let ((str (concat (buffer-substring beg end) "\n")))
-	   ;; Remove comments
-	   (with-temp-buffer
-	     (insert str)
-	     (goto-char (point-min))
-	     (while (search-forward "%" nil t)
-	       (when (not (matlab-cursor-in-string))
-		 (delete-region (1- (point)) (line-end-position))))
-	     (setq str (buffer-substring-no-properties (point-min) (point-max))))
-	   (while (string-match "\n\\s-*\n" str)
-	     (setq str (concat (substring str 0 (match-beginning 0))
-			       "\n"
-			       (substring str (match-end 0)))))
-	   (when noshow
-	     ;; Remove continuations
-	     (while (string-match
-		     (concat "\\s-*"
-			     (regexp-quote matlab-elipsis-string)
-			     "\\s-*\n")
-		     str)
-	       (setq str (replace-match " " t t str)))
-	     (while (string-match "\n" str)
-	       (setq str (replace-match ", " t t str)))
-	     (setq str (concat str "\n")))
-	   str))
- 	(msbn nil)
- 	(lastcmd)
-	(inhibit-field-text-motion t))
-    (if (matlab-with-emacs-link)
-	;; Run the region w/ Emacs Link
-	(matlab-eei-eval-region beg end)
-
-      (save-excursion
-	(setq msbn (matlab-shell-buffer-barf-not-running))
-	(set-buffer msbn)
-	(if (not (matlab-on-prompt-p))
-	    (error "MATLAB shell must be non-busy to do that"))
-	;; Save the old command
-	(beginning-of-line)
-	(re-search-forward comint-prompt-regexp)
-	(setq lastcmd (buffer-substring (point) (line-end-position)))
-	(delete-region (point) (line-end-position))
-	;; We are done error checking, run the command.
-	(matlab-shell-send-string command)
-	(insert lastcmd))
+         (let ((str (concat (buffer-substring beg end) "\n")))
+           ;; Remove comments
+           (with-temp-buffer
+             (insert str)
+             (goto-char (point-min))
+             (while (search-forward "%" nil t)
+               (when (not (matlab-cursor-in-string))
+                 (delete-region (1- (point)) (line-end-position))))
+             (setq str (buffer-substring-no-properties (point-min) (point-max))))
+           (while (string-match "\n\\s-*\n" str)
+             (setq str (concat (substring str 0 (match-beginning 0))
+                               "\n"
+                               (substring str (match-end 0)))))
+           (when noshow
+             ;; Remove continuations
+             (while (string-match
+                     (concat "\\s-*"
+                             (regexp-quote matlab-elipsis-string)
+                             "\\s-*\n")
+                     str)
+               (setq str (replace-match " " t t str)))
+             (while (string-match "\n" str)
+               (setq str (replace-match ", " t t str)))
+             (setq str (concat str "\n")))
+           str))
+        (msbn nil)
+        (lastcmd)
+        (inhibit-field-text-motion t))
+    (save-excursion
+      (setq msbn (matlab-shell-buffer-barf-not-running))
       (set-buffer msbn)
-      (goto-char (point-max))
-      (display-buffer msbn nil "visible"))
-    ))
+      (if (not (matlab-on-prompt-p))
+          (error "MATLAB shell must be non-busy to do that"))
+      ;; Save the old command
+      (beginning-of-line)
+      (re-search-forward comint-prompt-regexp)
+      (setq lastcmd (buffer-substring (point) (line-end-position)))
+      (delete-region (point) (line-end-position))
+      ;; We are done error checking, run the command.
+      (matlab-shell-send-string command)
+      (insert lastcmd))
+    (set-buffer msbn)
+    (goto-char (point-max))
+    (display-buffer msbn nil "visible")))
 
 (defun matlab-shell-run-cell ()
   "Run the cell the cursor is in."
