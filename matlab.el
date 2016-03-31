@@ -53,6 +53,11 @@
 (require 'easymenu)
 (require 'derived)
 
+(eval-when-compile
+  (require 'gud)
+  (require 'comint)
+  (require 'shell))
+
 ;;* Customize
 (defgroup matlab nil
   "MATLAB(R) mode."
@@ -2917,9 +2922,8 @@ ARG is passed to `fill-paragraph' and will justify the text."
                      (matlab-justify-line)))))
         (t
          (message "Paragraph Fill not supported in this context."))))
-
-;;; Semantic text insertion and management ====================================
 
+;;* Semantic text insertion and management
 (defun matlab-find-recent-variable-list (prefix)
   "Return a list of most recent variables starting with PREFIX as a string.
 Reverse searches for the following are done first:
@@ -3354,9 +3358,8 @@ Created: 14 Feb 2002"
   (LaTeX-mode)
   (font-lock-mode nil))
 
-
-;;; Block highlighting ========================================================
 
+;;* Block highlighting
 (defvar matlab-block-highlighter-timer nil
   "The timer representing the block highlighter.")
 
@@ -3463,43 +3466,22 @@ BUFF-WHEN-LAUNCHED is the buffer that was active when the timer was set."
                                                   (current-buffer)))
                               (overlay-put matlab-block-highlight-overlay
                                            'face 'matlab-region-face)))
-                        (error (message "Unstarted block at cursor."))))
-                  ;; do nothing
-                  ))))))))
+                        (error (message "Unstarted block at cursor."))))))))))))
 
-
-;;; M Block Folding with hideshow =============================================
-
+;;* M Block Folding with hideshow 
 (defun matlab-hideshow-forward-sexp-func (arg)
   "Move forward one sexp for hideshow.
 Argument ARG specifies the number of blocks to move forward."
   (beginning-of-line)
-  (matlab-forward-sexp arg)
-  )
+  (matlab-forward-sexp arg))
 
 (defun matlab-hideshow-adjust-beg-func (arg)
   "Adjust the beginning of a hideshow block.
 Argument ARG to make it happy."
   (end-of-line)
-  (point)
-  )
+  (point))
 
-;; Use this to enable hideshow in MATLAB.
-;; It has not been tested by me enough.
-
-;; REMOVE PUSHNEW FROM THIS LINE
-;;(pushnew (list 'matlab-mode
-;;             (matlab-block-beg-pre)
-;;             (matlab-block-end-pre)
-;;             "%"
-;;             'matlab-hideshow-forward-sexp-func
-;;             'matlab-hideshow-adjust-beg-func
-;;             )
-;;       hs-special-modes-alist :test 'equal)
-
-
-;;; M Code verification & Auto-fix ============================================
-
+;;* M Code verification & Auto-fix
 (defun matlab-mode-verify-fix-file-fn ()
   "Verify the current buffer from `write-contents-hooks'."
   (if matlab-verify-on-save-flag
@@ -3535,7 +3517,8 @@ If optional FAST is non-nil, do not perform usually lengthy checks."
   (mlint-minor-mode
    (if (or matlab-highlight-cross-function-variables
            matlab-show-mlint-warnings)
-       1 -1)))
+       1
+     -1)))
 
 (defun matlab-toggle-highlight-cross-function-variables ()
   "Toggle `matlab-highlight-cross-function-variables'."
@@ -3544,17 +3527,16 @@ If optional FAST is non-nil, do not perform usually lengthy checks."
         (not matlab-highlight-cross-function-variables))
   (if matlab-show-mlint-warnings
       (if matlab-highlight-cross-function-variables
-          (mlint-buffer)        ; became true, recompute mlint info
-                                        ; became false, just remove hilighting ...
+          ;; became true, recompute mlint info
+          (mlint-buffer)
+        ;; became false, just remove hilighting ...
         (mlint-clear-cross-function-variable-highlighting)))
   (mlint-minor-mode
    (if (or matlab-highlight-cross-function-variables
            matlab-show-mlint-warnings)
-       1 -1)))        ; change mlint mode altogether
+       1
+     -1)))
 
-;;
-;; Add more auto verify/fix functions here!
-;;
 (defun matlab-mode-vf-functionname (&optional fast)
   "Verify/Fix the function name of this file.
 Optional argument FAST is ignored."
@@ -3665,8 +3647,8 @@ Optional argument FAST causes this check to be skipped."
         (message "Block-check: %d%%"
                  (+ (/ (/ (* 100 (- (point-max) (point))) (point-max)) 2) 50))))))
 
-;;; Utility for verify/fix actions if you need to highlight
-;;  a section of the buffer for the user's approval.
+;; Utility for verify/fix actions if you need to highlight
+;; a section of the buffer for the user's approval.
 (defun matlab-mode-highlight-ask (begin end prompt)
   "Highlight from BEGIN to END while asking PROMPT as a yes-no question."
   (let ((mo (make-overlay begin end (current-buffer)))
@@ -3679,12 +3661,12 @@ Optional argument FAST causes this check to be skipped."
       (quit (delete-overlay mo) (error "Quit")))
     ans))
 
-;;; Quiesce an M file to remove accidental display of ANS during a run.
-;;  Useful if you have random outputs and you don't know where they are from,
-;;  or before compiling to standalone where some functions now have outputs
-;;  that did not have outputs earlier.
+;; Quiesce an M file to remove accidental display of ANS during a run.
+;; Useful if you have random outputs and you don't know where they are from,
+;; or before compiling to standalone where some functions now have outputs
+;; that did not have outputs earlier.
 ;;
-;;  You probably don't want this as a default verify function
+;; You probably don't want this as a default verify function
 (defvar matlab-quiesce-nosemi-regexp "\\s-*\\(function\\|parfor\\|for\\|spmd\\|while\\|try\\|catch\\|\
 switch\\|otherwise\\|case\\|break\\|if\\|else\\|end\\|return\\|disp\\|\
 $\\|%\\)"
@@ -3698,10 +3680,10 @@ desired.  Optional argument FAST is not used."
   (save-excursion
     (push-mark)
     (goto-char (point-min))
-    (let ((msgpos 0) (dir .2))
+    (let ((msgpos 0) (dir 0.2))
       (while (not (save-excursion (end-of-line) (eobp)))
-        (message (aref [ "Scanning o...." "Scanning .o..." "Scanning ..o.."
-                                          "Scanning ...o." "Scanning ....o" ] (floor msgpos)))
+        (message (aref ["Scanning o...." "Scanning .o..." "Scanning ..o.."
+                                         "Scanning ...o." "Scanning ....o"] (floor msgpos)))
         (setq msgpos (+ msgpos dir))
         (if (or (> msgpos 5) (< msgpos 0)) (setq dir (- dir)
                                                  msgpos (+ (* 2 dir) msgpos)))
@@ -3727,10 +3709,7 @@ desired.  Optional argument FAST is not used."
         (forward-line 1))))
   (message "Scanning .... done"))
 
-
-
-;;; V19 stuff =================================================================
-
+;;* V19 stuff
 (defvar matlab-mode-menu-keymap nil
   "Keymap used in MATLAB mode to provide a menu.")
 
@@ -3831,9 +3810,8 @@ desired.  Optional argument FAST is not used."
       ["Command Apropos" matlab-shell-apropos (matlab-shell-active-p)]
       ["Topic Browser" matlab-shell-topic-browser (matlab-shell-active-p)]))
   (easy-menu-add matlab-mode-menu matlab-mode-map))
-
-;;; MATLAB shell =============================================================
 
+;;* MATLAB shell
 (defgroup matlab-shell nil
   "MATLAB shell mode."
   :prefix "matlab-shell-"
@@ -3841,24 +3819,23 @@ desired.  Optional argument FAST is not used."
 
 (defcustom matlab-shell-command "matlab"
   "The name of the command to be run which will start the MATLAB process."
-  :group 'matlab-shell
   :type 'string)
 
 (defcustom matlab-shell-command-switches '("-nodesktop")
   "Command line parameters run with `matlab-shell-command'.
 Command switches are a list of strings.  Each entry is one switch."
-  :group 'matlab-shell
   :type '(list :tag "Switch: "))
 
 (defcustom matlab-shell-echoes t
   "If `matlab-shell-command' echoes input."
-  :group 'matlab-shell
   :type 'boolean)
 
 (defvar matlab-shell-running-matlab-version nil
   "The version of MATLAB running in the current `matlab-shell' buffer.")
+
 (defvar matlab-shell-running-matlab-release nil
   "The release of MATLAB running in the curbrent `matlab-shell' buffer.")
+
 (defvar matlab-shell-use-emacs-toolbox
   ;; matlab may not be on path.  (Name change, explicit load, etc)
   (let* ((mlfile (locate-library "matlab"))
@@ -3878,17 +3855,14 @@ This file is read to initialize the comint input ring.")
 
 (defcustom matlab-shell-input-ring-size 32
   "Number of history elements to keep."
-  :group 'matlab-shell
   :type 'integer)
 
 (defcustom matlab-shell-enable-gud-flag t
   "Non-nil means to use GUD mode when running the MATLAB shell."
-  :group 'matlab-shell
   :type 'boolean)
 
 (defcustom matlab-shell-mode-hook nil
   "List of functions to call on entry to MATLAB shell mode."
-  :group 'matlab-shell
   :type 'hook)
 
 (defcustom matlab-shell-ask-MATLAB-for-completions t
@@ -3896,7 +3870,6 @@ This file is read to initialize the comint input ring.")
 When nil, just complete file names.  (The original behavior.)
 At this time, MATLAB based completion can be slow if there are
 a lot of possible answers."
-  :group 'matlab-shell
   :type 'boolean)
 
 (defvar matlab-shell-buffer-name "MATLAB"
@@ -3947,8 +3920,6 @@ This name will have *'s surrounding it.")
 (defvar matlab-prompt-seen nil
   "Track visibility of MATLAB prompt in MATLAB Shell.")
 
-(eval-when-compile (require 'gud) (require 'comint) (require 'shell))
-
 ;;;###autoload
 (defun matlab-shell ()
   "Create a buffer with MATLAB running as a subprocess.
@@ -3986,10 +3957,8 @@ Try C-h f matlab-shell RET"))
             (process-environment (cons newvar process-environment)))
        (apply 'make-comint matlab-shell-buffer-name matlab-shell-command
               nil matlab-shell-command-switches)))
-
     (setq shell-dirtrackp t)
     (comint-mode)
-
     (if matlab-shell-enable-gud-flag
         (progn
           (gud-mode)
@@ -4004,12 +3973,7 @@ Try C-h f matlab-shell RET"))
                               'gud-filter)
           (set-process-sentinel (get-buffer-process (current-buffer))
                                 'gud-sentinel)
-          (gud-set-buffer))
-      ;; What to do when there is no GUD
-                                        ;(set-process-filter (get-buffer-process (current-buffer))
-                                        ;                 'matlab-shell-process-filter)
-      )
-
+          (gud-set-buffer)))
     ;; Comint and GUD both try to set the mode.  Now reset it to
     ;; matlab mode.
     (matlab-shell-mode)))
@@ -4020,10 +3984,8 @@ Try C-h f matlab-shell RET"))
       (locate-data-file "matlab.xpm")
     (expand-file-name "matlab.xpm" data-directory))
   "The MATLAB logo file."
-  :group 'matlab-shell
   :type '(choice (const :tag "None" nil)
           (file :tag "File" "")))
-
 
 (defun matlab-shell-hack-logo (str)
   "Replace the text logo with a real logo.
@@ -4032,14 +3994,12 @@ STR is passed from the commint filter."
     (save-excursion
       (when (re-search-backward "^[ \t]+< M A T L A B (R) >" (point-min) t)
         (delete-region (match-beginning 0) (match-end 0))
-        (insert (make-string 16 ? ))
+        (insert (make-string 16 ?\ ))
         (set-extent-begin-glyph (make-extent (point) (point))
                                 (make-glyph matlab-shell-logo))))
     ;; Remove this function from `comint-output-filter-functions'
     (remove-hook 'comint-output-filter-functions
-                 'matlab-shell-hack-logo))
-
-  )
+                 'matlab-shell-hack-logo)))
 
 (defun matlab-shell-version-scrape (str)
   "Scrape the MATLAB Version from the MATLAB startup text.
@@ -4166,8 +4126,6 @@ in a popup buffer.
         (gud-def gud-next "dbstep %p;\ndbhotlink(1)" "\C-n" "Step over one source line.")
         (gud-def gud-cont "dbcont;\ndbhotlink(1)" "\C-r" "Continue with display.")
         (gud-def gud-finish "dbquit" "\C-f" "Finish executing current function.")
-        ;; (gud-def gud-up     "dbup %p;\ndbhotlink()"             "<"    "Up N stack frames (numeric arg).")
-        ;; (gud-def gud-down   "dbdown %p;\ndbhotlink()"           ">"    "Down N stack frames (numeric arg).")
         (gud-def gud-up "dbup;\n[~,a___]=dbstack;\ndbhotlink(a___)" "<" "Up N stack frames (numeric arg).")
         (gud-def gud-down "dbdown;\n[~,a___]=dbstack;\ndbhotlink(a___)" ">" "Down N stack frames (numeric arg).")
         (gud-def gud-print "%e" "\C-p" "Evaluate M expression at point.")
@@ -4197,7 +4155,6 @@ in a popup buffer.
     km)
   "Keymap used on overlays that represent errors.")
 
-;; ANCHORS
 (defvar matlab-anchor-beg "<a href=\"\\(?:matlab: \\)?\\([^\"]+\\)\">"
   "Beginning of html anchor.")
 
@@ -4226,11 +4183,8 @@ Argument STR is the text for the anchor."
             (overlay-put o 'keymap matlab-shell-html-map)
             (overlay-put o 'help-echo anchor-text)
             (delete-region anchor-end-start anchor-end-finish)
-            (delete-region anchor-beg-start anchor-beg-finish)
-            ))))
-  )
+            (delete-region anchor-beg-start anchor-beg-finish))))))
 
-;; TEXT FORMATTING
 (defvar matlab-txt-format-beg "<\\(strong\\|u\\)>"
   "Beginning of html text formatting signal in HTML.")
 
@@ -4289,15 +4243,11 @@ Argument STR is the text for the text formater."
     ;; else
     (concat "\\(Error \\(?:in\\|using\\) ==>\\|Syntax error in ==>\\|In\\) "
             "\\([-@.a-zA-Z_0-9/ \\\\:]+\\)\\(?:>[^ ]+\\)?.*[\n ]\\(?:On\\|at\\)\\(?: line\\)? "
-            "\\([0-9]+\\) ?")
-    ) ;; end if
+            "\\([0-9]+\\) ?")) ;; end if
   "Regular expression finding where an error occurred.")
 
 (defvar matlab-shell-last-error-anchor nil
   "Last point where an error anchor was set.")
-(defvar matlab-shell-last-anchor-as-frame nil
-  ;; NOTE: this isn't being used yet.
-  "The last error anchor saved, represented as a debugger frame.")
 
 (defun matlab-shell-render-errors-as-anchor (str)
   "Detect non-url errors, and treat them as if they were url anchors.
@@ -4325,10 +4275,7 @@ Argument STR is the text that might have errors in it."
           (overlay-put o 'keymap matlab-shell-html-map)
           (overlay-put o 'help-echo (concat "Jump to error at " err-file "."))
           (setq first url)
-          (push o overlaystack)
-          ;; Save as a frame
-          (setq matlab-shell-last-anchor-as-frame
-                (cons err-file err-line))))
+          (push o overlaystack)))
       ;; Keep track of the very first error in this error stack.
       ;; It will represent the "place to go" for "go-to-last-error".
       (dolist (O overlaystack)
@@ -4371,11 +4318,9 @@ FILE is ignored, and ARGS is returned."
          (get-buffer-process gud-comint-buffer)
          "if usejava('jvm'), \
 com.mathworks.services.Prefs.setBooleanPref('EditorGraphicalDebugging', false); \
-end\n"
-         ))
+end\n"))
       ;; Mark that we've seen at least one prompt.
-      (setq matlab-prompt-seen t)
-      ))
+      (setq matlab-prompt-seen t)))
   (let ((garbage (concat "\\(" (regexp-quote "\C-g") "\\|"
                          (regexp-quote "\033[H0") "\\|"
                          (regexp-quote "\033[H\033[2J") "\\|"
@@ -4398,20 +4343,16 @@ end\n"
             (cond
               ((string-match "^error:\\(.*\\),\\([0-9]+\\),\\([0-9]+\\)$" url)
                (setq ef (substring url (match-beginning 1) (match-end 1))
-                     el (substring url (match-beginning 2) (match-end 2)))
-               )
+                     el (substring url (match-beginning 2) (match-end 2))))
               ((string-match "opentoline('\\([^']+\\)',\\([0-9]+\\),\\([0-9]+\\))" url)
                (setq ef (substring url (match-beginning 1) (match-end 1))
-                     el (substring url (match-beginning 2) (match-end 2)))
-               )
+                     el (substring url (match-beginning 2) (match-end 2))))
               ;; If we have the prompt, but no match (as above),
               ;; perhaps it is already dumped out into the buffer.  In
               ;; that case, look back through the buffer.
-
               )
             (when ef
-              (setq frame (cons ef (string-to-number el)))))))
-      )
+              (setq frame (cons ef (string-to-number el))))))))
     ;; This if makes sure that the entirety of an error output is brought in
     ;; so that matlab-shell-mode doesn't try to display a file that only partially
     ;; exists in the buffer.  Thus, if MATLAB output:
@@ -4421,7 +4362,7 @@ end\n"
     ;; The below used to match against the prompt, not \n, but then text that
     ;; had error: in it for some other reason wouldn't display at all.
     (if (and matlab-prompt-seen ;; Don't collect during boot
-             (not frame) ;; don't collect debug stuff
+             (not frame)        ;; don't collect debug stuff
              (let ((start (string-match gud-matlab-marker-regexp-prefix gud-marker-acc)))
                (and start
                     (not (string-match "\n" gud-marker-acc start))
@@ -4445,13 +4386,10 @@ end\n"
             (setq overlay-arrow-position nil
                   gud-last-last-frame nil
                   gud-overlay-arrow-position nil)
-            (sit-for 0)
-            )))
+            (sit-for 0))))
 
-    (if frame (setq gud-last-frame frame))
-
-    ;;(message "[%s] [%s]" output gud-marker-acc)
-
+    (when frame
+      (setq gud-last-frame frame))
     output))
 
 (defun gud-matlab-find-file (f)
@@ -4541,8 +4479,7 @@ non-nil if FCN is a builtin."
            (cmd (concat "which " fcn))
            (comint-scroll-show-maximum-output nil)
            output
-           builtin
-           )
+           builtin)
       (set-buffer msbn)
       (if (not (matlab-on-prompt-p))
           (error "MATLAB shell must be non-busy to do that"))
@@ -4569,19 +4506,15 @@ Returns a string path to the root of the executing MATLAB."
            (cmd "disp(matlabroot)")
            (comint-scroll-show-maximum-output nil)
            output
-           builtin
-           )
+           builtin)
       (set-buffer msbn)
-
       (if (and (boundp 'matlab-shell-matlabroot-run)
                matlab-shell-matlabroot-run)
           matlab-shell-matlabroot-run
         ;; If we haven't cache'd it, calculate it now.
-
         (if (not (matlab-on-prompt-p))
             (error "MATLAB shell must be non-busy to do that"))
         (setq output (matlab-shell-collect-command-output cmd))
-
         (string-match "$" output)
         (substring output 0 (match-beginning 0))))))
 
@@ -4656,8 +4589,7 @@ Returns a string path to the root of the executing MATLAB."
                    (insert try)
                    (matlab-shell-tab-hide-completions))
                   (t
-                   (insert lastcmd))))
-          )))))
+                   (insert lastcmd)))))))))
 
 (defun matlab-shell-tab-hide-completions ()
   "Hide any completion windows for `matlab-shell-tab'."
@@ -4670,14 +4602,11 @@ Returns a string path to the root of the executing MATLAB."
            (while (setq bw (get-buffer-window "*Completions*"))
              (select-window bw)
              (bury-buffer))
-           (select-window orig)))
-        )
+           (select-window orig))))
   ;; Reset state.
   (setq matlab-shell-window-exists-for-display-completion-flag nil))
 
-
-;;; MATLAB mode Shell commands ================================================
-
+;;* MATLAB mode Shell commands
 (defun matlab-show-matlab-shell-buffer ()
   "Switch to the buffer containing the matlab process."
   (interactive)
@@ -5161,7 +5090,6 @@ To reference old errors, put the cursor just after the error text."
 
 (defcustom matlab-shell-topic-mode-hook nil
   "MATLAB shell topic hook."
-  :group 'matlab-shell
   :type 'hook)
 
 (defvar matlab-shell-topic-current-topic nil
@@ -5404,7 +5332,6 @@ EVENT is the user mouse event."
 All directories under each element of `matlab-mode-install-path' are
 checked, so only top level toolbox directories need be added.
 Paths should be added in the order in which they should be searched."
-  :group 'matlab-shell
   :type '(repeat (string :tag "Path: ")))
 
 (defun matlab-find-file-under-path (path filename)
