@@ -54,33 +54,28 @@
 (require 'tempo)
 (require 'derived)
 
-;;; User-changeable variables =================================================
-
-;; Variables which the user can change
+;;* Customize
 (defgroup matlab nil
   "MATLAB(R) mode."
   :prefix "matlab-"
   :group 'languages)
 
 (defcustom matlab-indent-level 4
-  "*The basic indentation amount in `matlab-mode'."
-  :group 'matlab
+  "The basic indentation amount in `matlab-mode'."
   :type 'integer)
 
 (defcustom matlab-cont-level 4
-  "*Basic indentation after continuation if no other methods are found."
-  :group 'matlab
+  "Basic indentation after continuation if no other methods are found."
   :type 'integer)
 
 (defcustom matlab-cont-requires-ellipsis t
   "*Specify if ellipses are required at the end of a line for continuation.
 Future versions of Matlab may not require ellipses ... , so a heuristic
 determining if there is to be continuation is used instead."
-  :group 'matlab
   :type 'integer)
 
 (defcustom matlab-case-level '(2 . 2)
-  "*How far to indent case/otherwise statements in a switch.
+  "How far to indent case/otherwise statements in a switch.
 This can be an integer, which is the distance to indent the CASE and
 OTHERWISE commands, and how far to indent commands appearing in CASE
 and OTHERWISE blocks.  It can also be a cons cell which is of form
@@ -93,11 +88,10 @@ Note: Currently a bug exists if:
   CASEINDENT+COMMANDINDENT != `matlab-indent-level'
 so if you customize these variables, follow the above rule, and you
 should be ok."
-  :group 'matlab
   :type 'sexp)
 
 (defcustom matlab-indent-function-body 'guess
-  "*If non-nil, indent body of function.
+  "If non-nil, indent body of function.
 If the global value is nil, do not indent function bodies.
 If the global value is t, always indent function bodies.
 If the global value is 'guess, then the local value will be set to
@@ -105,21 +99,15 @@ either nil or t when the MATLAB mode is started in a buffer based on the
 file's current indentation.
 If the global value is 'MathWorks-Standard, then the local value is not
 changed, and functions are indented based on `matlab-functions-have-end'."
-  :group 'matlab
   :type '(choice (const :tag "Always" t)
           (const :tag "Never" nil)
           (const :tag "Guess" 'guess)
-          (const :tag "MathWorks Standard"
-           'MathWorks-Standard))
-  )
-
+          (const :tag "MathWorks Standard" 'MathWorks-Standard)))
 (make-variable-buffer-local 'matlab-indent-function-body)
 
 (defcustom matlab-functions-have-end nil
-  "*If non-nil, functions-have-end minor mode is on by default."
-  :group 'matlab
+  "If non-nil, functions-have-end minor mode is on by default."
   :type 'boolean)
-
 (make-variable-buffer-local 'matlab-functions-have-end)
 
 (defun matlab-toggle-functions-have-end ()
@@ -127,19 +115,17 @@ changed, and functions are indented based on `matlab-functions-have-end'."
   (matlab-toggle-functions-have-end-minor-mode))
 
 ;; The following minor mode is on if and only if the above variable is true;
-(easy-mmode-define-minor-mode matlab-functions-have-end-minor-mode
-                              "Toggle functions-have-end minor mode, indicating function/end pairing."
-                              nil
-                              (condition-case nil ;; avoid parse error on xemacs
-                                  (eval (read "#(\" function...end\" 0 15 (face (font-lock-keyword-face) fontified t))"))
-                                (error " function...end"))
-                              nil ; empty mode-map
-                              ;; body of matlab-functions-have-end-minor-mode
-                              (if matlab-functions-have-end-minor-mode
-                                  (setq matlab-functions-have-end t)
-                                (setq matlab-functions-have-end nil)
-                                )
-                              )
+(define-minor-mode matlab-functions-have-end-minor-mode
+  "Toggle functions-have-end minor mode, indicating function/end pairing."
+  nil
+  (condition-case nil ;; avoid parse error on xemacs
+      (eval (read "#(\" function...end\" 0 15 (face (font-lock-keyword-face) fontified t))"))
+    (error " function...end"))
+  nil                  ; empty mode-map
+  ;; body of matlab-functions-have-end-minor-mode
+  (if matlab-functions-have-end-minor-mode
+      (setq matlab-functions-have-end t)
+    (setq matlab-functions-have-end nil)))
 
 (defun matlab-do-functions-have-end-p ()
   "Non-nil if the first function in the current buffer terminates with end."
@@ -150,22 +136,19 @@ changed, and functions are indented based on `matlab-functions-have-end'."
           (beginning-of-line)
           (condition-case nil
               (progn (matlab-forward-sexp) t)
-            (error nil))
-          )
-      nil
-      )
-    ))
+            (error nil)))
+      nil)))
 
 (defun matlab-toggle-functions-have-end-minor-mode ()
   (matlab-functions-have-end-minor-mode)
   (if (and matlab-functions-have-end-minor-mode (not (eq major-mode 'matlab-mode)))
       (progn
-	(matlab-functions-have-end-minor-mode -1)
-	(error "functions-have-end minor mode is only for MATLAB Major mode")))
+        (matlab-functions-have-end-minor-mode -1)
+        (error "functions-have-end minor mode is only for MATLAB Major mode")))
   (setq matlab-functions-have-end matlab-functions-have-end-minor-mode))
 
 (defun matlab-indent-function-body-p ()
-  "Non-nil if functions bodies are indented. 
+  "Non-nil if functions bodies are indented.
 See `matlab-indent-function-body' variable."
   (if (eq matlab-indent-function-body 'MathWorks-Standard)
       ;; Dec '09
@@ -174,48 +157,45 @@ See `matlab-indent-function-body' variable."
     ;; Else, just return the variable.
     matlab-indent-function-body))
 
-(defcustom matlab-indent-past-arg1-functions
-  "[sg]et\\(_param\\)?\\|waitfor"
-  "*Regex describing functions whose first arg is special.
+(defcustom matlab-indent-past-arg1-functions "[sg]et\\(_param\\)?\\|waitfor"
+  "Regex describing functions whose first arg is special.
 This specialness means that all following parameters which appear on
 continued lines should appear indented to line up with the second
 argument, not the first argument."
-  :group 'matlab
   :type 'string)
 
 (defcustom matlab-arg1-max-indent-length 15
-  "*The maximum length to indent when indenting past arg1.
+  "The maximum length to indent when indenting past arg1.
 If arg1 is exceptionally long, then only this number of characters
-will be indented beyond the open paren starting the parameter list.")
+will be indented beyond the open paren starting the parameter list."
+  :type 'integer)
 
-(defcustom matlab-maximum-indents '(;; = is a convenience. Don't go too far
-				    (?= . (10 . 4))
-				    ;; Fns should provide hard limits
-				    (?\( . 50)
-				    ;; Matrix/Cell arrays
-				    (?\[ . 20)
-				    (?\{ . 20))
+(defcustom matlab-maximum-indents '( ;; = is a convenience. Don't go too far
+                                    (?= . (10 . 4))
+                                    ;; Fns should provide hard limits
+                                    (?\( . 50)
+                                    ;; Matrix/Cell arrays
+                                    (?\[ . 20)
+                                    (?\{ . 20))
   "Alist of maximum indentations when lining up code.
 Each element is of the form (CHAR . INDENT) where char is a character
 the indent engine is using, and INDENT is the maximum indentation
 allowed.  Indent could be of the form (MAXIMUM . INDENT), where
 MAXIMUM is the maximum allowed calculated indent, and INDENT is the
 amount to use if MAXIMUM is reached."
-  :group 'matlab
-  :type '(repeat (cons (character :tag "Open List Character")
+  :type '(repeat (cons
+                  (character :tag "Open List Character")
                   (sexp :tag "Number (max) or cons (max indent)"))))
 
 (defcustom matlab-handle-simulink t
-  "*If true, add in a few simulink customizations.
+  "If true, add in a few simulink customizations.
 This variable's state is mostly useful when set at load time when
 simulink font lock keywords can be removed.  This will handle
 additional cases as the need arrises."
-  :group 'matlab
   :type 'boolean)
 
 (defcustom matlab-auto-fill t
-  "*If true, set variable `auto-fill-function' to our function at startup."
-  :group 'matlab
+  "If true, set variable `auto-fill-function' to our function at startup."
   :type 'boolean)
 
 (defcustom matlab-fill-fudge 10
@@ -226,14 +206,12 @@ If they occur within this fudge factor, we will use them.
 Also, if none of the above occur, and we find a symbol to break at,
 but an open paren (group) starts or ends within this fudge factor,
 move there to boost the amount of fill leverage we can get."
-  :group 'matlab
   :type 'integer)
 
 (defcustom matlab-fill-fudge-hard-maximum 79
   "The longest line allowed when auto-filling code.
 This overcomes situations where the `fill-column' plus the
 `matlab-fill-fudge' is greater than some hard desired limit."
-  :group 'matlab
   :type 'integer)
 
 (defcustom matlab-elipsis-string "..."
@@ -241,49 +219,43 @@ This overcomes situations where the `fill-column' plus the
 This is used to generate and identify continuation lines.")
 
 (defcustom matlab-fill-code t
-  "*If true, `auto-fill-mode' causes code lines to be automatically continued."
-  :group 'matlab
+  "If true, `auto-fill-mode' causes code lines to be automatically continued."
   :type 'boolean)
 
 (defcustom matlab-fill-count-ellipsis-flag t
-  "*Non-nil means to count the ellipsis when auto filling.
+  "Non-nil means to count the ellipsis when auto filling.
 This effectively shortens the `fill-column' by the length of
-`matlab-elipsis-string'.")
+`matlab-elipsis-string'."
+  :type 'boolean)
 
 (defcustom matlab-fill-strings-flag t
-  "*Non-nil means that when auto-fill is on, strings are broken across lines.
+  "Non-nil means that when auto-fill is on, strings are broken across lines.
 If `matlab-fill-count-ellipsis-flag' is non nil, this shortens the
 `fill-column' by the length of `matlab-elipsis-string'.")
 
 (defcustom matlab-comment-column 40
-  "*The goal comment column in `matlab-mode' buffers."
-  :group 'matlab
+  "The goal comment column in `matlab-mode' buffers."
   :type 'integer)
 
 (defcustom matlab-comment-anti-indent 0
-  "*Amount of anti-indentation to use for comments in relation to code."
-  :group 'matlab
+  "Amount of anti-indentation to use for comments in relation to code."
   :type 'integer)
 
 (defcustom matlab-comment-line-s "% "
-  "*String to start comment on line by itself."
-  :group 'matlab
+  "String to start comment on line by itself."
   :type 'string)
 
 (defcustom matlab-comment-on-line-s "% "
-  "*String to start comment on line with code."
-  :group 'matlab
+  "String to start comment on line with code."
   :type 'string)
 
 (defcustom matlab-comment-region-s "% $$$ "
-  "*String inserted by \\[matlab-comment-region] at start of each line in \
+  "String inserted by \\[matlab-comment-region] at start of each line in \
 region."
-  :group 'matlab
   :type 'string)
 
 (defcustom matlab-verify-on-save-flag t
-  "*Non-nil means to verify M whenever we save a file."
-  :group 'matlab
+  "Non-nil means to verify M whenever we save a file."
   :type 'boolean)
 
 (defcustom matlab-mode-verify-fix-functions
@@ -291,51 +263,43 @@ region."
   "List of function symbols which perform a verification and fix to M code.
 Each function gets no arguments, and returns nothing.  They can move
 point, but it will be restored for them."
-  :group 'matlab
   :type '(repeat (choice :tag "Function: "
                   '(matlab-mode-vf-functionname
                     matlab-mode-vf-classname
                     matlab-mode-vf-block-matches-forward
                     matlab-mode-vf-block-matches-backward
-                    matlab-mode-vf-quiesce-buffer
-                    ))))
+                    matlab-mode-vf-quiesce-buffer))))
 
 (defcustom matlab-block-verify-max-buffer-size 50000
   "*Largest buffer size allowed for block verification during save."
-  :group 'matlab
   :type 'integer)
 
 ;; It is time to disable this.
 (defcustom matlab-vers-on-startup nil
-  "*If non-nil, show the version number on startup."
-  :group 'matlab
+  "If non-nil, show the version number on startup."
   :type 'boolean)
 
 (defcustom matlab-highlight-block-match-flag t
-  "*Non-nil means to highlight the matching if/end/whatever.
+  "Non-nil means to highlight the matching if/end/whatever.
 The highlighting only occurs when the cursor is on a block start or end
 keyword."
-  :group 'matlab
   :type 'boolean)
 
 (defcustom matlab-show-periodic-code-details-flag nil
-  "*Non-nil means to show code details in the minibuffer.
+  "Non-nil means to show code details in the minibuffer.
 This will only work if `matlab-highlight-block-match-flag' is non-nil."
-  :group 'matlab
   :type 'boolean)
 
 (defcustom matlab-use-eei t
-  "*Use Emacs Link for save-and-go and run-region."
-  :group 'matlab
+  "Use Emacs Link for save-and-go and run-region."
   :type 'boolean)
 
 (defcustom matlab-mode-hook nil
-  "*List of functions to call on entry to MATLAB mode."
-  :group 'matlab
+  "List of functions to call on entry to MATLAB mode."
   :type 'hook)
 
 (defcustom matlab-completion-technique 'complete
-  "*How the `matlab-complete-symbol' interfaces with the user.
+  "How the `matlab-complete-symbol' interfaces with the user.
 Valid values are:
 
 'increment - which means that new strings are tried with each
@@ -343,37 +307,30 @@ Valid values are:
              (Similar to `hippie-expand'.)
 'complete  - Which means that if there is no single completion, then
              all possibilities are displayed in a completion buffer."
-  :group 'matlab
   :type '(radio (const :tag "Incremental completion (hippie-expand)."
                  increment)
           (const :tag "Show completion buffer."
            complete)))
 
 (defcustom matlab-show-mlint-warnings nil
-  "*If non-nil, show mlint warnings."
-  :group 'matlab
+  "If non-nil, show mlint warnings."
   :type 'boolean)
-
 (make-variable-buffer-local 'matlab-show-mlint-warnings)
 
 (defcustom matlab-highlight-cross-function-variables nil
-  "*If non-nil, highlight cross-function variables."
-  :group 'matlab
+  "If non-nil, highlight cross-function variables."
   :type 'boolean)
-
 (make-variable-buffer-local 'matlab-highlight-cross-function-variables)
 
 (defcustom matlab-return-add-semicolon nil
-  "*If non nil, check to see a semicolon is needed when RET is pressed."
-  :group 'matlab
+  "If non nil, check to see a semicolon is needed when RET is pressed."
   :type 'boolean)
 
 (make-variable-buffer-local 'matlab-return-add-semicolon)
 
 (defcustom matlab-change-current-directory nil
-  "*If non nil, make file's directory the current directory when
+  "If non nil, make file's directory the current directory when
 evaluating it."
-  :group 'matlab
   :type 'boolean)
 
 (make-variable-buffer-local 'matlab-change-current-directory)
@@ -388,7 +345,7 @@ evaluating it."
 	 (list t
 	       (list :background (face-background l-region-face)
 		     :foreground (face-foreground l-region-face))))
-	"*Face used to highlight a matlab region."
+	"Face used to highlight a matlab region."
 	:group 'matlab))
 
   ;; If we do not, then we can fake it by copying 'region.
@@ -415,85 +372,42 @@ evaluating it."
 (defun matlab-font-lock-adjustments ()
   "Make adjustments for font lock.
 If font lock is not loaded, lay in wait."
-  (if (and (featurep 'custom) (fboundp 'custom-declare-variable))
-      
-      (progn
-	(defface matlab-unterminated-string-face
-	  (list
-	   (list t
-		 (list :background (face-background font-lock-string-face)
-		       :foreground (face-foreground font-lock-string-face)
-		       :underline t)))
-	  "*Face used to highlight unterminated strings."
-	  :group 'matlab)
-	(defface matlab-simulink-keyword-face
-	  (list
-	   (list t
-		 (list :background (face-background font-lock-type-face)
-		       :foreground (face-foreground font-lock-type-face)
-		       :underline t)))
-	  "*Face used to highlight simulink specific functions."
-	  :group 'matlab)
-        (defface matlab-nested-function-keyword-face
-	  (list
-	   (list t
-		 (list :slant  'italic)))
-          "*Face to use for cross-function variables.")
-        (defface matlab-cross-function-variable-face
-	  (list
-	   (list t
-		 (list :weight 'bold
-                       :slant  'italic)))
-          "*Face to use for cross-function variables."
-	  :group 'matlab)
-	(defface matlab-cellbreak-face
-	  (list
-	   (list t
-		 (list :background (face-background font-lock-comment-face)
-		       :foreground (face-foreground font-lock-comment-face)
-		       :overline t
-		       :bold t)))
-	  "*Face to use for cellbreak %% lines.")
-	)
-    
-    ;; Now, lets make the unterminated string face
-    (cond ((facep 'font-lock-string-face)
-	   (copy-face 'font-lock-string-face
-		      'matlab-unterminated-string-face))
-	  (t
-	   (make-face 'matlab-unterminated-string-face)))
-    (set-face-underline-p 'matlab-unterminated-string-face t)
-    
-    ;; Now make some simulink faces
-    (cond ((facep 'font-lock-type-face)
-	   (copy-face 'font-lock-type-face 'matlab-simulink-keyword-face))
-	  (t
-	   (make-face 'matlab-simulink-keyword-face)))
-    (set-face-underline-p 'matlab-simulink-keyword-face t)
-    
-    ;; Now make some nested function/end keyword faces
-    (cond ((facep 'font-lock-type-face)
-	   (copy-face 'font-lock-type-face 'matlab-nested-function-keyword-face))
-	  (t
-	   (make-face 'matlab-nested-function-keyword-face)))
-    
-    ;; Now make some cross-function variable faces
-    (cond ((facep 'font-lock-type-face)
-	   (copy-face 'font-lock-type-face 'matlab-cross-function-variable-face))
-	  (t
-	   (make-face 'matlab-cross-function-variable-face)))
-    (set-face-bold-p 'matlab-cross-function-variable-face t)
-
-    ;; Now make some cellbreak variable faces
-    (cond ((facep 'font-comment-face)
-	   (copy-face 'font-lock-comment-face 'matlab-cellbreak-face))
-	  (t
-	   (make-face 'matlab-cellbreak-face)))
-    (set-face-bold-p 'matlab-cellbreak-face t)
-    (condition-case nil
-	(set-face-attribute 'matlab-cellbreak-face nil :overline t)
-      (error nil))
-    )
+  (defface matlab-unterminated-string-face
+    (list
+     (list t
+           (list :background (face-background font-lock-string-face)
+                 :foreground (face-foreground font-lock-string-face)
+                 :underline t)))
+    "Face used to highlight unterminated strings."
+    :group 'matlab)
+  (defface matlab-simulink-keyword-face
+    (list
+     (list t
+           (list :background (face-background font-lock-type-face)
+                 :foreground (face-foreground font-lock-type-face)
+                 :underline t)))
+    "Face used to highlight simulink specific functions."
+    :group 'matlab)
+  (defface matlab-nested-function-keyword-face
+    (list
+     (list t
+           (list :slant 'italic)))
+    "Face to use for cross-function variables.")
+  (defface matlab-cross-function-variable-face
+    (list
+     (list t
+           (list :weight 'bold
+                 :slant 'italic)))
+    "Face to use for cross-function variables."
+    :group 'matlab)
+  (defface matlab-cellbreak-face
+    (list
+     (list t
+           (list :background (face-background font-lock-comment-face)
+                 :foreground (face-foreground font-lock-comment-face)
+                 :overline t
+                 :bold t)))
+    "Face to use for cellbreak %% lines.")
   (remove-hook 'font-lock-mode-hook 'matlab-font-lock-adjustments))
 
 ;; Make the adjustments for font lock after it's loaded.
@@ -532,7 +446,7 @@ If font lock is not loaded, lay in wait."
 (defvar matlab-mode-special-syntax-table
   (let ((st (copy-syntax-table matlab-mode-syntax-table)))
     ;; Make _ a part of words so we can skip them better
-    (modify-syntax-entry ?_  "w" st)
+    (modify-syntax-entry ?_ "w" st)
     st)
   "The syntax table used when navigating blocks.")
 
@@ -588,7 +502,7 @@ If font lock is not loaded, lay in wait."
     (define-key km [(control c) (control r)] 'matlab-shell-run-region)
     (define-key km [(meta control return)] 'matlab-shell-run-cell)
     (define-key km [(control c) (control t)] 'matlab-show-line-info)
-    (define-key km [(control c) ?. ] 'matlab-find-file-on-path)
+    (define-key km [(control c) ?.] 'matlab-find-file-on-path)
     (define-key km [(control h) (control m)] matlab-help-map)
     (define-key km [(control j)] 'matlab-linefeed)
     (define-key km "\M-\r" 'newline)
@@ -605,10 +519,10 @@ If font lock is not loaded, lay in wait."
     (define-key km [(meta control a)] 'matlab-beginning-of-defun)
     (define-key km [(meta control e)] 'matlab-end-of-defun)
     (if (string-match "XEmacs" emacs-version)
-	(define-key km [(control meta button1)] 'matlab-find-file-click)
+        (define-key km [(control meta button1)] 'matlab-find-file-click)
       (define-key km [(control meta mouse-2)] 'matlab-find-file-click))
     (substitute-key-definition 'comment-region 'matlab-comment-region
-			       km) ; global-map ;torkel
+                               km)      ; global-map ;torkel
     km)
   "The keymap used in `matlab-mode'.")
 
@@ -631,8 +545,8 @@ Therefore, to end, we must check all that goop.")
 Argument LIMIT is the maximum distance to scan."
   (matlab-font-lock-string-match-here
    (concat matlab-string-start-regexp
-	   "\\('" matlab-string-end-regexp "\\)"
-	   "\\([^']\\|$\\)")
+           "\\('" matlab-string-end-regexp "\\)"
+           "\\([^']\\|$\\)")
    limit))
 
 (defun matlab-font-lock-string-match-unterminated (limit)
@@ -648,20 +562,20 @@ Argument REGEX is the expression to scan for.  Match 2 must be the string.
 Argument LIMIT is the maximum distance to scan."
   (let (e)
     (while (and (re-search-forward regex limit t)
-		(progn
-		  ;; This gets us out of a comment after the string.
-		  (setq e (match-end 2))
-		  (goto-char (match-beginning 2))
-		  (prog1
-		      (or (matlab-cursor-in-comment)
-			  (if (bolp) nil
-			    (save-excursion
-			      (forward-char -1)
-			      (matlab-cursor-in-string))))
-		    (goto-char e))))
+                (progn
+                  ;; This gets us out of a comment after the string.
+                  (setq e (match-end 2))
+                  (goto-char (match-beginning 2))
+                  (prog1
+                      (or (matlab-cursor-in-comment)
+                          (if (bolp) nil
+                            (save-excursion
+                              (forward-char -1)
+                              (matlab-cursor-in-string))))
+                    (goto-char e))))
       (setq e nil))
     (if (not e)
-	nil
+        nil
       (goto-char e)
       t)))
 
@@ -670,14 +584,14 @@ Argument LIMIT is the maximum distance to scan."
 Argument LIMIT is the maximum distance to scan."
   (let (e)
     (while (and (re-search-forward "\\(%[^%\n]*\\)" limit t)
-		(progn
-		  (setq e (match-end 1))
-		  (member (get-text-property (match-beginning 0) 'face)
-			  '(font-lock-string-face
-			    matlab-unterminated-string-face))))
+                (progn
+                  (setq e (match-end 1))
+                  (member (get-text-property (match-beginning 0) 'face)
+                          '(font-lock-string-face
+                            matlab-unterminated-string-face))))
       (setq e nil))
     (if (not e)
-	nil
+        nil
       (goto-char e)
       t)))
 
@@ -686,46 +600,46 @@ Argument LIMIT is the maximum distance to scan."
 The if(0) and else/end construct should be highlighted differently.
 Argument LIMIT is the maximum distance to search."
   (if (and (< (point) limit)
-	   (re-search-forward
-	    "\\<\\(if\\>\\s-*(?\\s-*\\(0\\|false\\)\\s-*)?$\\)"
-	    limit t))
+           (re-search-forward
+            "\\<\\(if\\>\\s-*(?\\s-*\\(0\\|false\\)\\s-*)?$\\)"
+            limit t))
       (let ((b1 (match-beginning 1))
-	    (e1 (match-end 1))
-	    (b2 nil) (e2 nil)
-	    (b3 nil) (e3 nil))
-	(goto-char b1)
-	(condition-case nil
-	    (progn
-	      ;; Go forward over the matlab sexp.  Include scanning
-	      ;; for ELSE since parts of the ELSE block are not
-	      ;; `commented out'.
-	      (matlab-forward-sexp t)
-	      (forward-word -1)
-	      ;; Is there an ELSE in this block?
-	      (if (looking-at (matlab-block-mid-re))
-		  (progn
-		    (setq b3 (match-beginning 0)
-			  e3 (match-end 0))
-		    ;; Now find the REAL end.
-		    (matlab-forward-sexp)
-		    (forward-word -1)))
-	      ;; End of block stuff
-	      (if (looking-at (matlab-block-end-re))
-		  (progn
-		    (setq b2 (match-beginning 0)
-			  e2 (match-end 0))
-		    ;; make sure something exists...
-		    (if (not b3) (setq b3 b2 e3 e2)))
-		(error "Eh?"))
-	      ;; Ok, build up some match data.
-	      (set-match-data
-	       (list b1 e2		;the real deal.
-		     b1 e1		;if (0)
-		     b2 e2		;end
-		     b3 e3		;else (if applicable.)
-		     b1 e3))		;body commented out.
-	      t)
-	  (error nil)))))
+            (e1 (match-end 1))
+            (b2 nil) (e2 nil)
+            (b3 nil) (e3 nil))
+        (goto-char b1)
+        (condition-case nil
+            (progn
+              ;; Go forward over the matlab sexp.  Include scanning
+              ;; for ELSE since parts of the ELSE block are not
+              ;; `commented out'.
+              (matlab-forward-sexp t)
+              (forward-word -1)
+              ;; Is there an ELSE in this block?
+              (if (looking-at (matlab-block-mid-re))
+                  (progn
+                    (setq b3 (match-beginning 0)
+                          e3 (match-end 0))
+                    ;; Now find the REAL end.
+                    (matlab-forward-sexp)
+                    (forward-word -1)))
+              ;; End of block stuff
+              (if (looking-at (matlab-block-end-re))
+                  (progn
+                    (setq b2 (match-beginning 0)
+                          e2 (match-end 0))
+                    ;; make sure something exists...
+                    (if (not b3) (setq b3 b2 e3 e2)))
+                (error "Eh?"))
+              ;; Ok, build up some match data.
+              (set-match-data
+               (list b1 e2              ;the real deal.
+                     b1 e1              ;if (0)
+                     b2 e2              ;end
+                     b3 e3              ;else (if applicable.)
+                     b1 e3))            ;body commented out.
+              t)
+          (error nil)))))
 
 (defun matlab-font-lock-nested-function-keyword-match (limit)
   "Find next nested function/end keyword for font-lock.
@@ -803,16 +717,14 @@ Argument LIMIT is the maximum distance to search."
             t)))))
 
 (defcustom matlab-keyword-list '("global" "persistent" "for" "parfor" "while"
-				 "spmd" "if" "elseif" "else"
-				 "endfunction" "return" "break" "continue"
-				 "switch" "case" "otherwise" "try"
-				 "catch" "tic" "toc"
-				 ;; MCOS keywords
-				 "classdef" "properties" "methods" "enumeration"
-				 )
+                                 "spmd" "if" "elseif" "else"
+                                 "endfunction" "return" "break" "continue"
+                                 "switch" "case" "otherwise" "try"
+                                 "catch" "tic" "toc"
+                                 ;; MCOS keywords
+                                 "classdef" "properties" "methods" "enumeration")
   "List of keywords for MATLAB used in highlighting.
 Customizing this variable is only useful if `regexp-opt' is available."
-  :group 'matlab
   :type '(repeat (string :tag "Keyword: ")))
 
 (defcustom matlab-handle-graphics-list '("figure" "axes" "axis" "line"
@@ -824,7 +736,6 @@ Customizing this variable is only useful if `regexp-opt' is available."
                                          "setfont" "setcolor")
   "List of handle graphics functions used in highlighting.
 Customizing this variable is only useful if `regexp-opt' is available."
-  :group 'matlab
   :type '(repeat (string :tag "HG Keyword: ")))
 
 (defcustom matlab-debug-list '("dbstop" "dbclear" "dbcont" "dbdown" "dbmex"
@@ -832,7 +743,6 @@ Customizing this variable is only useful if `regexp-opt' is available."
                                "dbquit")
   "List of debug commands used in highlighting.
 Customizing this variable is only useful if `regexp-opt' is available."
-  :group 'matlab
   :type '(repeat (string :tag "Debug Keyword: ")))
 
 ;; font-lock keywords
@@ -854,7 +764,7 @@ Customizing this variable is only useful if `regexp-opt' is available."
    ;; General keywords
    (list
     (if (fboundp 'regexp-opt)
-	(concat "\\<\\(" (regexp-opt matlab-keyword-list) "\\)\\>")
+        (concat "\\<\\(" (regexp-opt matlab-keyword-list) "\\)\\>")
       ;; Original hard-coded value for pre Emacs 20.1
       "\\<\\(break\\|ca\\(se\\|tch\\)\\|e\\(lse\\(\\|if\\)\\|ndfunction\\)\
 \\|\\(par\\)?for\\|spmd\\|global\\|if\\|otherwise\\|return\\|switch\\|try\\|while\\|tic\\|toc\\)\\>")
@@ -866,16 +776,16 @@ Customizing this variable is only useful if `regexp-opt' is available."
    ;; How about unreachable code?  MUsT BE AFTER KEYWORDS in order to
    ;; get double-highlighting.
    '(matlab-find-unreachable-code
-     (1 'underline prepend)		;if part
-     (2 'underline prepend)		;end part
-     (3 'underline prepend)		;else part (if applicable)
-     (4 font-lock-comment-face prepend)	;commented out part.
+     (1 'underline prepend)             ;if part
+     (2 'underline prepend)             ;end part
+     (3 'underline prepend)             ;else part (if applicable)
+     (4 font-lock-comment-face prepend) ;commented out part.
      )
    ;; block comments need to be commented out too!
    '(matlab-find-block-comments
      (1 font-lock-comment-face prepend) ; commented out
      (2 'underline prepend)
-     (3 'underline prepend)		;the comment parts
+     (3 'underline prepend)             ;the comment parts
      )
    ;; Cell mode breaks get special treatment
    '("^\\s-*\\(%%[^\n]*\n\\)" (1 matlab-cellbreak-face append))
@@ -892,14 +802,13 @@ Customizing this variable is only useful if `regexp-opt' is available."
    ;; Handle graphics stuff
    (list
     (if (fboundp 'regexp-opt)
-	(concat "\\<\\(" (regexp-opt matlab-handle-graphics-list) "\\)\\>")
+        (concat "\\<\\(" (regexp-opt matlab-handle-graphics-list) "\\)\\>")
       ;; The original regular expression for pre Emacs 20.1
       "\\<\\(ax\\(es\\|is\\)\\|figure\\|get\\|image\\|li\\(ght\\|ne\\)\\|\
 patch\\|s\\(et\\(\\|color\\|font\\)\\|urface\\)\\|text\\|\
 ui\\(cont\\(ext\\(\\|menu\\)\\|rol\\)\\|menu\\|\
 \\(toggle\\|push\\)tool\\|toolbar\\)\\)\\>")
-    '(0 font-lock-type-face))
-   )
+    '(0 font-lock-type-face)))
   "Expressions to highlight in MATLAB mode.")
 
 (defconst matlab-function-arguments
@@ -912,25 +821,25 @@ ui\\(cont\\(ext\\(\\|menu\\)\\|rol\\)\\|menu\\|\
     ;; defining a function, a (possibly empty) list of assigned variables,
     ;; function name, and an optional (possibly empty) list of input variables
     (list (concat "^\\s-*\\(function\\)\\>[ \t\n.]*"
-		  "\\(\\[[^]]*\\]\\|\\sw+\\)[ \t\n.]*"
-		  "=[ \t\n.]*\\(\\sw+\\)[ \t\n.]*"
+                  "\\(\\[[^]]*\\]\\|\\sw+\\)[ \t\n.]*"
+                  "=[ \t\n.]*\\(\\sw+\\)[ \t\n.]*"
                   matlab-function-arguments)
-	  '(1 font-lock-keyword-face append)
-	  '(2 font-lock-variable-name-face append)
-	  '(3 font-lock-function-name-face append))
+          '(1 font-lock-keyword-face append)
+          '(2 font-lock-variable-name-face append)
+          '(3 font-lock-function-name-face append))
     ;; defining a function, a function name, and an optional (possibly
     ;; empty) list of input variables
     (list (concat "^\\s-*\\(function\\)[ \t\n.]+"
-		  "\\(\\sw+\\)[ \t\n.]*"
+                  "\\(\\sw+\\)[ \t\n.]*"
                   matlab-function-arguments)
-	  '(1 font-lock-keyword-face append)
-	  '(2 font-lock-function-name-face append))
+          '(1 font-lock-keyword-face append)
+          '(2 font-lock-function-name-face append))
     ;; Anchor on the function keyword, highlight params
     (list (concat "^\\s-*function\\>[ \t\n.]*"
-		  "\\(\\(\\[[^]]*\\]\\|\\sw+\\)[ \t\n.]*=[ \t\n.]*\\)?"
-		  "\\sw+\\s-*(")
-	  '("\\s-*\\(\\sw+\\)\\s-*[,)]" nil nil
-	    (1 font-lock-variable-name-face)))
+                  "\\(\\(\\[[^]]*\\]\\|\\sw+\\)[ \t\n.]*=[ \t\n.]*\\)?"
+                  "\\sw+\\s-*(")
+          '("\\s-*\\(\\sw+\\)\\s-*[,)]" nil nil
+            (1 font-lock-variable-name-face)))
     ;; I like variables for FOR loops
     '("\\<\\(for\\|parfor\\)\\s-+\\(\\sw+\\)\\s-*=\\s-*\
 \\(\\([^\n,;%(]+\\|([^\n%)]+)\\)+\\)"
@@ -948,9 +857,8 @@ ui\\(cont\\(ext\\(\\|menu\\)\\|rol\\)\\|menu\\|\
     ;; Define these as variables since this is about as close
     ;; as matlab gets to variables
     (list (concat "\\<" matlab-indent-past-arg1-functions "\\s-*")
-	  '("(\\s-*\\(\\w+\\)\\s-*\\(,\\|)\\)" nil nil
-	    (1 font-lock-variable-name-face)))
-    ))
+          '("(\\s-*\\(\\w+\\)\\s-*\\(,\\|)\\)" nil nil
+            (1 font-lock-variable-name-face)))))
   "Expressions to highlight in MATLAB mode.")
 
 (defvar matlab-really-gaudy-font-lock-keywords
@@ -962,16 +870,16 @@ ui\\(cont\\(ext\\(\\|menu\\)\\|rol\\)\\|menu\\|\
       1 font-lock-type-face)
     ;; How about references in the HELP text.
     (list (concat "^" matlab-comment-line-s "\\s-*"
-		  "\\(\\([A-Z]+\\s-*=\\s-+\\|\\[[^]]+]\\s-*=\\s-+\\|\\)"
-		  "\\([A-Z][0-9A-Z]+\\)\\(([^)\n]+)\\| \\)\\)")
-	  '(1 font-lock-reference-face prepend))
+                  "\\(\\([A-Z]+\\s-*=\\s-+\\|\\[[^]]+]\\s-*=\\s-+\\|\\)"
+                  "\\([A-Z][0-9A-Z]+\\)\\(([^)\n]+)\\| \\)\\)")
+          '(1 font-lock-reference-face prepend))
     (list (concat "^" matlab-comment-line-s "\\s-*"
-		  "See also\\s-+")
-	  '("\\([A-Z][A-Z0-9]+\\)\\([,.]\\| and\\|$\\) *" nil nil
-	    (1 font-lock-reference-face prepend)))
+                  "See also\\s-+")
+          '("\\([A-Z][A-Z0-9]+\\)\\([,.]\\| and\\|$\\) *" nil nil
+            (1 font-lock-reference-face prepend)))
     (list (concat "^" matlab-comment-line-s "\\s-*"
-		  "\\(\\$" "Revision" "[^\n$]+\\$\\)")
-	  '(1 font-lock-reference-face prepend))
+                  "\\(\\$" "Revision" "[^\n$]+\\$\\)")
+          '(1 font-lock-reference-face prepend))
     ;; continuation ellipsis.
     '("[^.]\\(\\.\\.\\.+\\)\\([^\n]*\\)" (1 'underline)
       (2 font-lock-comment-face))
@@ -979,7 +887,7 @@ ui\\(cont\\(ext\\(\\|menu\\)\\|rol\\)\\|menu\\|\
     ;;'("\\<\\(db\\sw+\\)\\>" 1 'bold)
     (list
      (if (fboundp 'regexp-opt)
-	 (concat "\\<\\(" (regexp-opt matlab-debug-list) "\\)\\>")
+         (concat "\\<\\(" (regexp-opt matlab-debug-list) "\\)\\>")
        ;; pre-regexp-opt days.
        "\\<\\(db\\(c\\(lear\\|ont\\)\\|down\\|mex\\|quit\\|\
 st\\(a\\(ck\\|tus\\)\\|ep\\|op\\)\\|type\\|up\\)\\)\\>")
@@ -987,12 +895,12 @@ st\\(a\\(ck\\|tus\\)\\|ep\\|op\\)\\|type\\|up\\)\\)\\>")
    (if matlab-handle-simulink
        ;; Simulink functions, but only if the user wants it.
        (list (list (concat "\\<\\(\\([sg]et_param\\|sim\\([gs]et\\)?\\|"
-			   "\\(mld\\|ss\\)[A-Z]\\w+\\)\\|"
-			   "\\(new\\|open\\|close\\|save\\|find\\)_system\\|"
-			   "\\(add\\|delete\\|replace\\)_\\(block\\|line\\)\\|"
-			   "simulink\\|bd\\(root\\|close\\)"
-			   "\\)\\>")
-		   1 matlab-simulink-keyword-face))
+                           "\\(mld\\|ss\\)[A-Z]\\w+\\)\\|"
+                           "\\(new\\|open\\|close\\|save\\|find\\)_system\\|"
+                           "\\(add\\|delete\\|replace\\)_\\(block\\|line\\)\\|"
+                           "simulink\\|bd\\(root\\|close\\)"
+                           "\\)\\>")
+                   1 matlab-simulink-keyword-face))
      nil))
   "Expressions to highlight in MATLAB mode.")
 
@@ -1014,8 +922,7 @@ st\\(a\\(ck\\|tus\\)\\|ep\\|op\\)\\|type\\|up\\)\\)\\>")
    '("All Rights Reserved" 0 'italic)
    '("\\((c)\\s-+Copyright[^\n]+\\)" 1 font-lock-comment-face)
    '("\\(Version\\)\\s-+\\([^\n]+\\)"
-     (1 font-lock-function-name-face) (2 font-lock-variable-name-face))
-   )
+     (1 font-lock-function-name-face) (2 font-lock-variable-name-face)))
   "Additional keywords used by MATLAB when reporting errors in interactive\
 mode.")
 
@@ -1198,7 +1105,7 @@ All Key Bindings:
          (setq matlab-indent-function-body 'MathWorks-Standard)
          ))
      )
-    
+
     (t)
     )
 
@@ -1360,9 +1267,8 @@ Return nil if it is being used to dereference an array."
   "Keywords which mark the beginning of mcos blocks.")
 
 (defcustom matlab-block-indent-tic-toc-flag nil
-  "*Non-nil means that tic,toc should indent like a if,end block.
+  "Non-nil means that tic,toc should indent like a if,end block.
 This variable should be set before loading matlab.el"
-  :group 'matlab
   :type 'boolean)
 
 (defconst matlab-block-beg-pre-if
@@ -1472,7 +1378,7 @@ The class name is match 2."
   "\\(^\\s-*classdef\\b[ \t\n]*\\)\\(\\sw+\\)\\(\\s-*<\\)?")
 
 (defconst matlab-cline-start-skip "[ \t]*%[ \t]*"
-  "*The regular expression for skipping comment start.")
+  "The regular expression for skipping comment start.")
 
 ;;; Lists for matlab keywords =================================================
 
@@ -2543,7 +2449,6 @@ Must be one of:
     'matlab-indent-after-ret
     'matlab-indent-end-before-ret
     'matlab-indent-before-ret"
-  :group 'matlab
   :type '(choice (function-item matlab-plain-ret)
           (function-item matlab-indent-after-ret)
           (function-item matlab-indent-end-before-ret)
@@ -3782,7 +3687,7 @@ Argument ARG to make it happy."
 ;; It has not been tested by me enough.
 
 ;; REMOVE PUSHNEW FROM THIS LINE
-;;(pushnew (list 'matlab-mode 
+;;(pushnew (list 'matlab-mode
 ;;	       (matlab-block-beg-pre)
 ;;	       (matlab-block-end-pre)
 ;;	       "%"
@@ -3826,7 +3731,7 @@ If optional FAST is non-nil, do not perform usually lengthy checks."
           (mlint-buffer)        ; became true, recompute mlint info
         (mlint-clear-warnings))) ; became false, just remove hilighting
   ;; change mlint mode altogether
-  (mlint-minor-mode 
+  (mlint-minor-mode
    (if (or matlab-highlight-cross-function-variables
            matlab-show-mlint-warnings)
        1 -1)))
@@ -3841,7 +3746,7 @@ If optional FAST is non-nil, do not perform usually lengthy checks."
           (mlint-buffer)        ; became true, recompute mlint info
                                         ; became false, just remove hilighting ...
         (mlint-clear-cross-function-variable-highlighting)))
-  (mlint-minor-mode 
+  (mlint-minor-mode
    (if (or matlab-highlight-cross-function-variables
            matlab-show-mlint-warnings)
        1 -1)))        ; change mlint mode altogether
@@ -4141,18 +4046,18 @@ desired.  Optional argument FAST is not used."
   :group 'matlab)
 
 (defcustom matlab-shell-command "matlab"
-  "*The name of the command to be run which will start the MATLAB process."
+  "The name of the command to be run which will start the MATLAB process."
   :group 'matlab-shell
   :type 'string)
 
 (defcustom matlab-shell-command-switches '("-nodesktop")
-  "*Command line parameters run with `matlab-shell-command'.
+  "Command line parameters run with `matlab-shell-command'.
 Command switches are a list of strings.  Each entry is one switch."
   :group 'matlab-shell
   :type '(list :tag "Switch: "))
 
 (defcustom matlab-shell-echoes t
-  "*If `matlab-shell-command' echoes input."
+  "If `matlab-shell-command' echoes input."
   :group 'matlab-shell
   :type 'boolean)
 
@@ -4173,22 +4078,22 @@ Using emacsclient allows the currently running Emacs to also be the
 external editor for MATLAB.")
 
 (defcustom matlab-shell-history-file "~/.matlab/%s/history.m"
-  "*Location of the history file.
-A %s is replaced with the MATLAB version release number, such as R12. 
+  "Location of the history file.
+A %s is replaced with the MATLAB version release number, such as R12.
 This file is read to initialize the comint input ring.")
 
 (defcustom matlab-shell-input-ring-size 32
-  "*Number of history elements to keep."
+  "Number of history elements to keep."
   :group 'matlab-shell
   :type 'integer)
 
 (defcustom matlab-shell-enable-gud-flag t
-  "*Non-nil means to use GUD mode when running the MATLAB shell."
+  "Non-nil means to use GUD mode when running the MATLAB shell."
   :group 'matlab-shell
   :type 'boolean)
 
 (defcustom matlab-shell-mode-hook nil
-  "*List of functions to call on entry to MATLAB shell mode."
+  "List of functions to call on entry to MATLAB shell mode."
   :group 'matlab-shell
   :type 'hook)
 
@@ -4300,7 +4205,7 @@ Try C-h f matlab-shell RET"))
             (process-environment (cons newvar process-environment)))
        (apply 'make-comint matlab-shell-buffer-name matlab-shell-command
               nil matlab-shell-command-switches)))
-    
+
     (setq shell-dirtrackp t)
     (comint-mode)
 
@@ -4333,7 +4238,7 @@ Try C-h f matlab-shell RET"))
       ;; Starting from XEmacs 20.4 use locate-data-file
       (locate-data-file "matlab.xpm")
     (expand-file-name "matlab.xpm" data-directory))
-  "*The MATLAB logo file."
+  "The MATLAB logo file."
   :group 'matlab-shell
   :type '(choice (const :tag "None" nil)
           (file :tag "File" "")))
@@ -4352,7 +4257,7 @@ STR is passed from the commint filter."
     ;; Remove this function from `comint-output-filter-functions'
     (remove-hook 'comint-output-filter-functions
  		 'matlab-shell-hack-logo))
-  
+
   )
 
 (defun matlab-shell-version-scrape (str)
@@ -4472,7 +4377,7 @@ in a popup buffer.
        ]
       ["Exit" matlab-shell-exit t]))
   (easy-menu-add matlab-shell-menu matlab-shell-mode-map)
-  
+
   (if matlab-shell-enable-gud-flag
       (progn
 	(gud-def gud-break  "dbstop at %l in %f"  "\C-b" "Set breakpoint at current line.")
@@ -4483,7 +4388,7 @@ in a popup buffer.
 	(gud-def gud-finish "dbquit"              "\C-f" "Finish executing current function.")
 	;; (gud-def gud-up     "dbup %p;\ndbhotlink()"             "<"    "Up N stack frames (numeric arg).")
 	;; (gud-def gud-down   "dbdown %p;\ndbhotlink()"           ">"    "Down N stack frames (numeric arg).")
-	(gud-def gud-up     "dbup;\n[~,a___]=dbstack;\ndbhotlink(a___)"             "<"    "Up N stack frames (numeric arg).") 
+	(gud-def gud-up     "dbup;\n[~,a___]=dbstack;\ndbhotlink(a___)"             "<"    "Up N stack frames (numeric arg).")
 	(gud-def gud-down   "dbdown;\n[~,a___]=dbstack;\ndbhotlink(a___)"           ">"    "Down N stack frames (numeric arg).")
 	(gud-def gud-print  "%e"                  "\C-p" "Evaluate M expression at point.")
 	(if (fboundp 'gud-make-debug-menu)
@@ -4724,7 +4629,7 @@ end\n"
               ;; If we have the prompt, but no match (as above),
               ;; perhaps it is already dumped out into the buffer.  In
               ;; that case, look back through the buffer.
-              
+
               )
 	    (when ef
 	      (setq frame (cons ef (string-to-number el)))))))
@@ -4898,7 +4803,7 @@ Returns a string path to the root of the executing MATLAB."
 	(if (not (matlab-on-prompt-p))
 	    (error "MATLAB shell must be non-busy to do that"))
 	(setq output (matlab-shell-collect-command-output cmd))
-	
+
 	(string-match "$" output)
 	(substring output 0 (match-beginning 0))))))
 
@@ -5369,7 +5274,7 @@ show up in reverse order."
       (while (and (not url)
                   (setq p (previous-overlay-change p))
                   (not (eq p (point-min))))
-        (setq url 
+        (setq url
 	      (if stacktop
 		  (matlab-url-stack-top-at p)
 		(matlab-url-at p))))
@@ -5477,7 +5382,7 @@ To reference old errors, put the cursor just after the error text."
 ;;; matlab-shell based Topic Browser and Help =================================
 
 (defcustom matlab-shell-topic-mode-hook nil
-  "*MATLAB shell topic hook."
+  "MATLAB shell topic hook."
   :group 'matlab-shell
   :type 'hook)
 
