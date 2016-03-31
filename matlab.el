@@ -51,7 +51,6 @@
   "Current version of MATLAB(R) mode.")
 
 (require 'easymenu)
-(require 'tempo)
 (require 'derived)
 
 ;;* Customize
@@ -376,9 +375,6 @@ evaluating it."
   "Face to use for cellbreak %% lines.")
 
 ;;* Variables
-(defvar matlab-tempo-tags nil
-  "List of templates used in MATLAB mode.")
-
 (defvar matlab-mode-syntax-table
   (let ((st (make-syntax-table (standard-syntax-table))))
     (modify-syntax-entry ?_ "_" st)
@@ -426,13 +422,6 @@ evaluating it."
   (let ((km (make-sparse-keymap)))
     (define-key km "c" 'matlab-insert-next-case)
     (define-key km "e" 'matlab-insert-end-block)
-    (define-key km "i" 'tempo-template-matlab-if)
-    (define-key km "I" 'tempo-template-matlab-if-else)
-    (define-key km "f" 'tempo-template-matlab-for)
-    (define-key km "s" 'tempo-template-matlab-switch)
-    (define-key km "t" 'tempo-template-matlab-try)
-    (define-key km "w" 'tempo-template-matlab-while)
-    (define-key km "F" 'tempo-template-matlab-function)
     (define-key km "'" 'matlab-stringify-region)
     ;; Not really inserts, but auto coding stuff
     (define-key km "\C-s" 'matlab-ispell-strings)
@@ -910,10 +899,6 @@ Convenient navigation commands are:
  \\[matlab-backward-sexp] - Move backwards over a syntactic block of code.
 
 Convenient template insertion commands:
- \\[tempo-template-matlab-function] - Insert a function definition.
- \\[tempo-template-matlab-if] - Insert an IF END block.
- \\[tempo-template-matlab-for] - Insert a FOR END block.
- \\[tempo-template-matlab-switch] - Insert a SWITCH END statement.
  \\[matlab-insert-next-case] - Insert the next CASE condition in a SWITCH.
  \\[matlab-insert-end-block] - Insert a matched END statement.  With \
 optional ARG, reindent.
@@ -991,9 +976,6 @@ All Key Bindings:
   ;; It also lets us fix mistakes before a `save-and-go'.
   (make-local-variable 'write-contents-hooks)
   (add-hook 'write-contents-hooks 'matlab-mode-verify-fix-file-fn)
-  ;; Tempo tags
-  (make-local-variable 'tempo-local-tags)
-  (setq tempo-local-tags (append matlab-tempo-tags tempo-local-tags))
   ;; give each file it's own parameter history
   (make-local-variable 'matlab-shell-save-and-go-history)
   (make-local-variable 'font-lock-defaults)
@@ -3143,9 +3125,11 @@ If NEXT then the next property from the list is used."
 (defvar matlab-last-prefix nil
   "Maintained by `matlab-complete-symbol'.
 The prefix used for the first completion command.")
+
 (defvar matlab-last-semantic nil
   "Maintained by `matlab-complete-symbol'.
 The last type of semantic used while completing things.")
+
 (defvar matlab-completion-search-state nil
   "List of searching things we will be doing.")
 
@@ -3277,69 +3261,6 @@ Optional argument REINDENT indicates if the specified block should be re-indente
       (matlab-indent-line)
       (if reindent (indent-region begin (point) nil)))))
 
-(tempo-define-template
- "matlab-for"
- '("for " p "=" p "," > n>
-   r> &
-   "end" > %)
- "for"
- "Insert a MATLAB for statement"
- 'matlab-tempo-tags
- )
-
-(tempo-define-template
- "matlab-while"
- '("while (" p ")," > n>
-   r> &
-   "end" > %)
- "while"
- "Insert a MATLAB while statement"
- 'matlab-tempo-tags
- )
-
-(tempo-define-template
- "matlab-if"
- '("if " p > n
-   r>
-   "end" > n)
- "if"
- "Insert a MATLAB if statement"
- 'matlab-tempo-tags
- )
-
-(tempo-define-template
- "matlab-if-else"
- '("if " p > n
-   r>
-   "else" > n
-   "end" > n)
- "if"
- "Insert a MATLAB if statement"
- 'matlab-tempo-tags
- )
-
-(tempo-define-template
- "matlab-try"
- '("try " > n
-   r>
-   "catch" > n
-   p > n
-   "end" > n)
- "try"
- "Insert a MATLAB try catch statement"
- 'matlab-tempo-tags
- )
-
-(tempo-define-template
- "matlab-switch"
- '("switch " p > n
-   "otherwise" > n
-   r>
-   "end" > n)
- "switch"
- "Insert a MATLAB switch statement with region in the otherwise clause."
- 'matlab-tempo-tags)
-
 (defun matlab-insert-next-case ()
   "Insert a case statement inside this switch statement."
   (interactive)
@@ -3357,36 +3278,6 @@ Optional argument REINDENT indicates if the specified block should be re-indente
   (indent-to 0)
   (insert "case ")
   (matlab-indent-line))
-
-(tempo-define-template
- "matlab-function"
- '("function "
-   (P "output argument(s): " output t)
-   ;; Insert brackets only if there is more than one output argument
-   (if (string-match "," (tempo-lookup-named 'output))
-       '(l "[" (s output) "]")
-     '(l (s output)))
-   ;; Insert equal sign only if there is output argument(s)
-   (if (= 0 (length (tempo-lookup-named 'output))) nil
-     " = ")
-   ;; The name of a function, as defined in the first line, should
-   ;; be the same as the name of the file without .m extension
-   (if (= 1 (count-lines 1 (point)))
-       (tempo-save-named
-        'fname
-        (file-name-nondirectory (file-name-sans-extension
-                                 (buffer-file-name))))
-     '(l (P "function name: " fname t)))
-   (tempo-lookup-named 'fname)
-   "("  (P "input argument(s): ") ")" n
-   "% " (upcase (tempo-lookup-named 'fname)) " - " (P "H1 line: ") n
-   "%   " p n
-   (if matlab-functions-have-end
-       '(l "end" n)))
- "function"
- "Insert a MATLAB function statement"
- 'matlab-tempo-tags
- )
 
 (defun matlab-stringify-region (begin end)
   "Put MATLAB 's around region, and quote all quotes in the string.
@@ -3893,15 +3784,8 @@ desired.  Optional argument FAST is not used."
       ("Insert"
        ["Complete Symbol" matlab-complete-symbol t]
        ["Comment" matlab-comment t]
-       ["if end" tempo-template-matlab-if t]
-       ["if else end" tempo-template-matlab-if-else t]
-       ["for end" tempo-template-matlab-for t]
-       ["switch otherwise end" tempo-template-matlab-switch t]
        ["Next case" matlab-insert-next-case t]
-       ["try catch end" tempo-template-matlab-try t]
-       ["while end" tempo-template-matlab-while t]
        ["End of block" matlab-insert-end-block t]
-       ["Function" tempo-template-matlab-function t]
        ["Stringify Region" matlab-stringify-region t])
       ("Customize"
                                         ;      ["Auto Fill Counts Elipsis"
