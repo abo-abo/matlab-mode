@@ -5373,6 +5373,54 @@ Check `matlab-mode-install-path'" filename))))
         (setq msg (concat msg " w/comm")))
     (message msg)))
 
+;;* eval
+(defun matlab-eval (command)
+  "Collect output of COMMAND without changing point."
+  (let ((command-output-begin nil)
+        (str nil)
+        (last-cmd nil)
+        (last-cmd-with-prompt nil)
+        (inhibit-field-text-motion t)
+        (buffer (matlab-shell-active-p)))
+    (with-current-buffer buffer
+      ;; save the last command and delete the old prompt
+      (beginning-of-line)
+      (setq last-cmd-with-prompt
+            (buffer-substring (point) (line-end-position)))
+      (setq last-cmd (replace-regexp-in-string
+                      ">> " "" last-cmd-with-prompt))
+      (delete-region (point) (line-end-position))
+      ;; send the command
+      (setq command-output-begin (point))
+      (comint-simple-send (get-buffer-process (current-buffer))
+                          command)
+      ;; collect the output
+      (goto-char (point-max))
+      (while (not (save-excursion
+                    (let ((inhibit-field-text-motion t))
+                      (goto-char (point-max))
+                      (beginning-of-line)
+                      (looking-at
+                       ">> \\s-*$"))))
+        (accept-process-output (get-buffer-process buffer))
+        (goto-char (point-max)))
+      ;; save output to string
+      (when (re-search-backward "^ans =" command-output-begin t)
+        (beginning-of-line 3)
+        (setq str (string-trim-right
+                   (buffer-substring-no-properties
+                    (point)
+                    (- (point-max) 3)))))
+      ;; delete the output from the command line
+      (delete-region command-output-begin (point-max))
+      ;; restore prompt and insert last command
+      (goto-char (point-max))
+      (delete-blank-lines)
+      (beginning-of-line)
+      (comint-send-string (get-buffer-process (current-buffer)) "\n")
+      ;; return the shell output
+      str)))
+
 (provide 'matlab)
 
 ;;; matlab.el ends here
