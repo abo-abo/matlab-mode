@@ -52,6 +52,7 @@
 
 (require 'easymenu)
 (require 'derived)
+(require 'hydra)
 
 (eval-when-compile
   (require 'gud)
@@ -5384,11 +5385,12 @@ Check `matlab-mode-install-path'" filename))))
         (buffer (matlab-shell-active-p)))
     (with-current-buffer buffer
       ;; save the last command and delete the old prompt
+      (goto-char (point-max))
       (beginning-of-line)
       (setq last-cmd-with-prompt
             (buffer-substring (point) (line-end-position)))
       (setq last-cmd (replace-regexp-in-string
-                      ">> " "" last-cmd-with-prompt))
+                      "K?>> " "" last-cmd-with-prompt))
       (delete-region (point) (line-end-position))
       ;; send the command
       (setq command-output-begin (point))
@@ -5401,25 +5403,62 @@ Check `matlab-mode-install-path'" filename))))
                       (goto-char (point-max))
                       (beginning-of-line)
                       (looking-at
-                       ">> \\s-*$"))))
+                       "K?>> \\s-*$"))))
         (accept-process-output (get-buffer-process buffer))
         (goto-char (point-max)))
-      ;; save output to string
-      (when (re-search-backward "^ans =" command-output-begin t)
-        (beginning-of-line 3)
-        (setq str (string-trim-right
-                   (buffer-substring-no-properties
-                    (point)
-                    (- (point-max) 3)))))
-      ;; delete the output from the command line
-      (delete-region command-output-begin (point-max))
-      ;; restore prompt and insert last command
-      (goto-char (point-max))
-      (delete-blank-lines)
-      (beginning-of-line)
-      (comint-send-string (get-buffer-process (current-buffer)) "\n")
-      ;; return the shell output
-      str)))
+      (let ((whole-output (buffer-substring-no-properties
+                           command-output-begin
+                           (point))))
+        (setq whole-output (string-trim-left whole-output))
+        (if (string-match "\\`.*\n\\([^\0]*\\)\n.*\\'" whole-output)
+            (setq str (match-string 1 whole-output))
+          (setq str ""))
+        ;; delete the output from the command line
+        (delete-region command-output-begin (point-max))
+        ;; restore prompt and insert last command
+        (goto-char (point-max))
+        (delete-blank-lines)
+        (beginning-of-line)
+        (comint-send-string (get-buffer-process (current-buffer)) "\n")
+        (insert last-cmd)
+        ;; return the shell output
+        str))))
+
+;;* debugger
+(defvar matlab-debug-current-file nil)
+
+(defun matlab-debug-goto ()
+  "When in debugger, to to the top of \"dbstack\"."
+  (interactive)
+  (let ((stack (matlab-eval "dbstack")))
+    (when (string-match "In \\(.*\\) (line \\([0-9]+\\))$" stack)
+      (let* ((file (match-string 1 stack))
+             (line (match-string 2 stack))
+             (full-file (matlab-eval (format "which('%s')" file))))
+        (if (file-exists-p full-file)
+            (progn
+              (setq matlab-debug-current-file full-file)
+              (find-file-other-window full-file)
+              (goto-char (point-min))
+              (forward-line (string-to-number line)))
+          (error "MATLAB requested file %s but it does not exist" full-file))))))
+
+(defun matlab-debug-dbstep ()
+  "When in debugger, to to the top of \"dbstack\"."
+  (interactive)
+  (let* ((res (matlab-eval "dbstep"))
+         (line-number (read res)))
+    (with-current-buffer (find-file-noselect matlab-debug-current-file)
+      (goto-char (point-min))
+      (forward-line (1- line-number)))))
+
+(defhydra hydra-matlab-debug (:color pink)
+  "db"
+  ("l" matlab-debug-goto "goto line")
+  ("j" matlab-debug-dbstep "dbstep")
+  ("g" (matlab-eval "dbcont") "dbcont" :exit t)
+  ("Q" (matlab-eval "dbquit") "dbquit" :exit t)
+  ("q" nil "quit"))
 
 (provide 'matlab)
 
