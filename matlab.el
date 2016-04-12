@@ -5062,7 +5062,13 @@ If DEBUG is non-nil, then setup GUD debugging features."
         ((string-match "^matlab: *\\(.*\\)$" url)
          (process-send-string
           (get-buffer-process gud-comint-buffer)
-          (concat (substring url (match-beginning 1) (match-end 1)) "\n")))))
+          (concat (substring url (match-beginning 1) (match-end 1)) "\n")))
+        ((string-match "\\`\\([^:]+\\):\\([0-9]+\\)\\'" url)
+         (let ((file (match-string-no-properties 1 url))
+               (line (string-to-number (match-string-no-properties 2 url))))
+           (find-file-other-window file)
+           (goto-char (point-min))
+           (forward-line (1- line))))))
 
 (defun matlab-shell-last-error ()
   "In the MATLAB interactive buffer, find the last MATLAB error, and go there.
