@@ -474,6 +474,8 @@ evaluating it."
                                km)
     ;; (define-key km [left-margin mouse-1] 'matlab-dbg-breakpoint-toggle)
     (define-key km [left-fringe mouse-1] 'matlab-dbg-breakpoint-toggle)
+    (define-key km (kbd "M-.") 'matlab-goto-symbol)
+    (define-key km (kbd "M-,") 'pop-tag-mark)
     km)
   "The keymap used in `matlab-mode'.")
 
@@ -5454,6 +5456,15 @@ Check `matlab-mode-install-path'" filename))))
       (insert last-cmd)
       answer)))
 
+(defun matlab-goto-symbol ()
+  (interactive)
+  (let ((sym (substring-no-properties
+              (thing-at-point 'symbol))))
+    (when (stringp sym)
+      (deactivate-mark)
+      (with-no-warnings
+        (ring-insert find-tag-marker-ring (point-marker)))
+      (matlab-eval (format "open('%s')" sym)))))
 
 ;;* debugger
 (defvar matlab-debug-current-file nil)
