@@ -5374,55 +5374,53 @@ Check `matlab-mode-install-path'" filename))))
         (setq msg (concat msg " w/comm")))
     (message msg)))
 
+(defvar matlab-prompt-regex "^K?>> ")
+
 ;;* eval
 (defun matlab-eval (command)
   "Collect output of COMMAND without changing point."
-  (let ((command-output-begin nil)
-        (str nil)
-        (last-cmd nil)
-        (last-cmd-with-prompt nil)
-        (inhibit-field-text-motion t)
-        (buffer (matlab-shell-active-p)))
+  (unless (string-match "\n\\'" command)
+    (setq command (concat command "\n")))
+  (let* ((inhibit-field-text-motion t)
+         (buffer (matlab-shell-active-p))
+         (process (get-buffer-process buffer))
+         command-begin
+         command-output-begin
+         last-cmd)
     (with-current-buffer buffer
-      ;; save the last command and delete the old prompt
       (goto-char (point-max))
-      (beginning-of-line)
-      (setq last-cmd-with-prompt
-            (buffer-substring (point) (line-end-position)))
-      (setq last-cmd (replace-regexp-in-string
-                      "K?>> " "" last-cmd-with-prompt))
-      (delete-region (point) (line-end-position))
-      ;; send the command
-      (setq command-output-begin (point))
-      (comint-simple-send (get-buffer-process (current-buffer))
-                          command)
-      ;; collect the output
-      (goto-char (point-max))
-      (while (not (save-excursion
-                    (let ((inhibit-field-text-motion t))
-                      (goto-char (point-max))
-                      (beginning-of-line)
-                      (looking-at
-                       "K?>> \\s-*$"))))
-        (accept-process-output (get-buffer-process buffer))
+      (if (re-search-backward matlab-prompt-regex nil t)
+          (setq last-cmd (buffer-substring (match-end 0) (point-max)))
+        (setq last-cmd ""))
+      (delete-region (point) (point-max))
+      (setq command-begin (point))
+      (setq command-output-begin (+ (point) (length command)))
+      (process-send-string process command)
+      (while (not (looking-back matlab-prompt-regex))
+        (accept-process-output process)
         (goto-char (point-max)))
-      (let ((whole-output (buffer-substring-no-properties
-                           command-output-begin
-                           (point))))
-        (setq whole-output (string-trim-left whole-output))
-        (if (string-match "\\`.*\n\\([^\0]*\\)\n.*\\'" whole-output)
-            (setq str (match-string 1 whole-output))
-          (setq str ""))
-        ;; delete the output from the command line
-        (delete-region command-output-begin (point-max))
-        ;; restore prompt and insert last command
-        (goto-char (point-max))
-        (delete-blank-lines)
-        (beginning-of-line)
-        (comint-send-string (get-buffer-process (current-buffer)) "\n")
-        (insert last-cmd)
-        ;; return the shell output
-        str))))
+      (when (looking-back matlab-prompt-regex)
+        (delete-region (match-beginning 0)
+                       (match-end 0)))
+      (if (re-search-backward "^[A-Z_a-z0-9]+ =\n\n?" command-output-begin t)
+          (progn
+            (setq answer (buffer-substring-no-properties (match-end 0) (- (point-max) 2)))
+            (when (= 0 (cl-count ?\n answer))
+              (setq answer (string-trim answer))))
+        (setq answer (buffer-substring-no-properties
+                      command-output-begin
+                      (1- (point-max)))))
+      (setq answer (string-trim-right answer))
+      (delete-region command-begin (point-max))
+      (when (eq (char-before) ?\n)
+        (backward-delete-char 1))
+      (process-send-string process "\n")
+      (while (not (looking-back matlab-prompt-regex))
+        (accept-process-output process)
+        (goto-char (point-max)))
+      (insert last-cmd)
+      answer)))
+
 
 ;;* debugger
 (defvar matlab-debug-current-file nil)
