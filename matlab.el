@@ -4477,21 +4477,25 @@ Optional argument ARG describes the number of chars to delete."
         (delete-char numchars)
       (error "Beginning of line"))))
 
+(defun matlab-fboundp (fun)
+  (matlab-eval (format "exist('%s')" fun)))
+
+(defun matlab-addpath (dir)
+  (matlab-eval (format "addpath('%s')" dir)))
+
+(defvar matlab-mode-root (or load-file-name
+                             default-directory))
+
 (defun matlab-shell-completion-list (str)
   "Get a list of completions from MATLAB.
 STR is a substring to complete."
-  (save-excursion
-    (let* ((msbn (matlab-shell-buffer-barf-not-running))
-           (cmd (concat "emacsdocomplete('" str "')"))
-           (comint-scroll-show-maximum-output nil)
-           output
-           (completions nil))
-      (set-buffer msbn)
-      (if (not (matlab-on-prompt-p))
-          (error "MATLAB shell must be non-busy to do that"))
-      (setq output (matlab-shell-collect-command-output cmd))
-      ;; Debug
-      (string-match "emacs_completions_output =" output)
+  (when (string= "0" (matlab-fboundp "emacsdocomplete"))
+    (matlab-addpath (expand-file-name "toolbox" matlab-mode-root)))
+  (let* ((cmd (concat "emacsdocomplete('" str "')"))
+         (output (matlab-eval cmd))
+         completions)
+    (if (null (string-match "^java.lang.String\\[\\]:\n" output))
+        (error "Could not match java.lang.String")
       (setq output (substring output (match-end 0)))
       ;; Parse the output string.
       (while (string-match "'" output)
@@ -4499,9 +4503,8 @@ STR is a substring to complete."
         (setq output (substring output (match-end 0)))
         (string-match "'" output)
         ;; we are making a completion list, so that is a list of lists.
-        (setq completions (cons (list (substring output 0 (match-beginning 0)))
-                                completions)
-              output (substring output (match-end 0))))
+        (push (substring output 0 (match-beginning 0)) completions)
+        (setq output (substring output (match-end 0))))
       ;; Return them
       (nreverse completions))))
 
