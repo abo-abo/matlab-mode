@@ -53,6 +53,7 @@
 (require 'easymenu)
 (require 'derived)
 (require 'hydra)
+(require 'gdb-mi)
 
 (eval-when-compile
   (require 'gud)
@@ -470,9 +471,41 @@ evaluating it."
         (define-key km [(control meta button1)] 'matlab-find-file-click)
       (define-key km [(control meta mouse-2)] 'matlab-find-file-click))
     (substitute-key-definition 'comment-region 'matlab-comment-region
-                               km)      ; global-map ;torkel
+                               km)
+    ;; (define-key km [left-margin mouse-1] 'matlab-dbg-breakpoint-toggle)
+    (define-key km [left-fringe mouse-1] 'matlab-dbg-breakpoint-toggle)
     km)
   "The keymap used in `matlab-mode'.")
+
+(defun matlab-dbg-breakpoint-toggle (event)
+  (interactive "e")
+  (mouse-minibuffer-check event)
+  (let ((posn (event-end event)))
+    (with-selected-window (posn-window posn)
+      (if (buffer-file-name)
+          (if (numberp (posn-point posn))
+              (save-excursion
+                (goto-char (posn-point posn))
+                (if (or (posn-object posn)
+                        (memq (car (fringe-bitmaps-at-pos (posn-point posn)))
+                              '(breakpoint)))
+                    (matlab-dbg-breakpoint-remove posn)
+                  (matlab-dbg-breakpoint-add (posn-point posn))))))
+      (posn-set-point posn))))
+
+(defun matlab-dbg-breakpoint-remove (posn)
+  (with-selected-window (posn-window posn)
+    (let ((pt (posn-point posn))
+          (file (buffer-file-name))
+          (line (line-number-at-pos)))
+      (gdb-remove-strings pt (1+ pt))
+      (matlab-eval (format "dbclear in %s at %d" file line)))))
+
+(defun matlab-dbg-breakpoint-add (point)
+  (gdb-put-string nil point `(left-fringe breakpoint))
+  (let ((file (buffer-file-name))
+        (line (line-number-at-pos)))
+    (matlab-eval (format "dbstop in %s at %d" file line))))
 
 ;;* Font locking keywords
 (defvar matlab-string-start-regexp "\\(^\\|[^]})a-zA-Z0-9_.']\\)"
