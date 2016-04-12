@@ -75,7 +75,7 @@
   :type 'integer)
 
 (defcustom matlab-cont-requires-ellipsis t
-  "*Specify if ellipses are required at the end of a line for continuation.
+  "Specify if ellipses are required at the end of a line for continuation.
 Future versions of Matlab may not require ellipses ... , so a heuristic
 determining if there is to be continuation is used instead."
   :type 'integer)
@@ -277,7 +277,7 @@ point, but it will be restored for them."
                     matlab-mode-vf-quiesce-buffer))))
 
 (defcustom matlab-block-verify-max-buffer-size 50000
-  "*Largest buffer size allowed for block verification during save."
+  "Largest buffer size allowed for block verification during save."
   :type 'integer)
 
 ;; It is time to disable this.
@@ -294,10 +294,6 @@ keyword."
 (defcustom matlab-show-periodic-code-details-flag nil
   "Non-nil means to show code details in the minibuffer.
 This will only work if `matlab-highlight-block-match-flag' is non-nil."
-  :type 'boolean)
-
-(defcustom matlab-use-eei t
-  "Use Emacs Link for save-and-go and run-region."
   :type 'boolean)
 
 (defcustom matlab-mode-hook nil
