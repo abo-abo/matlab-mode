@@ -380,7 +380,7 @@ evaluating it."
 ;;* Variables
 (defvar matlab-mode-syntax-table
   (let ((st (make-syntax-table (standard-syntax-table))))
-    (modify-syntax-entry ?_ "_" st)
+    (modify-syntax-entry ?_ "w" st)
     (modify-syntax-entry ?% "<" st)
     (modify-syntax-entry ?\n ">" st)
     (modify-syntax-entry ?\\ "." st)
