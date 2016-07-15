@@ -2109,10 +2109,7 @@ Argument CURRENT-INDENTATION is what the previous line recommends for indentatio
          ;; HELP COMMENT and COMMENT REGION
          ((or (matlab-ltype-help-comm)
               (matlab-ltype-comm-ignore))
-          (list 'comment-help
-                (save-excursion
-                  (matlab-beginning-of-defun)
-                  (current-indentation))))
+          (list 'comment-help matlab-indent-level))
          ;; COMMENT Continued From Previous Line
          ((setq tmp (matlab-ltype-continued-comm))
           (list 'comment tmp))
