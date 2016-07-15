@@ -96,7 +96,7 @@ so if you customize these variables, follow the above rule, and you
 should be ok."
   :type 'sexp)
 
-(defcustom matlab-indent-function-body 'guess
+(defcustom matlab-indent-function-body t
   "If non-nil, indent body of function.
 If the global value is nil, do not indent function bodies.
 If the global value is t, always indent function bodies.
