@@ -300,20 +300,6 @@ This will only work if `matlab-highlight-block-match-flag' is non-nil."
   "List of functions to call on entry to MATLAB mode."
   :type 'hook)
 
-(defcustom matlab-completion-technique 'complete
-  "How the `matlab-complete-symbol' interfaces with the user.
-Valid values are:
-
-'increment - which means that new strings are tried with each
-             successive call until all methods are exhausted.
-             (Similar to `hippie-expand'.)
-'complete  - Which means that if there is no single completion, then
-             all possibilities are displayed in a completion buffer."
-  :type '(radio (const :tag "Incremental completion (hippie-expand)."
-                 increment)
-          (const :tag "Show completion buffer."
-           complete)))
-
 (defcustom matlab-show-mlint-warnings nil
   "If non-nil, show mlint warnings."
   :type 'boolean)
@@ -457,7 +443,6 @@ evaluating it."
     (define-key km [(meta e)] 'matlab-end-of-command)
     (define-key km [(meta j)] 'matlab-comment-line-break-function)
     (define-key km [(meta s)] 'matlab-show-matlab-shell-buffer)
-    (define-key km "\M-\t" 'matlab-complete-symbol)
     (define-key km (kbd "C-M-f") 'matlab-forward-sexp)
     (define-key km (kbd "C-M-b") 'matlab-backward-sexp)
     (define-key km [(meta control q)] 'matlab-indent-sexp)
@@ -921,8 +906,6 @@ Convenient editing commands are:
  \\[matlab-fill-comment-line] - Fill the current comment line.
  \\[matlab-fill-region] - Fill code and comments in region.
  \\[matlab-fill-paragraph]     - Refill the current command or comment.
- \\[matlab-complete-symbol]   - Symbol completion of matlab symbols\
-based on the local syntax.
  \\[matlab-indent-sexp] - Indent syntactic block of code.
 
 Convenient navigation commands are:
@@ -2334,7 +2317,7 @@ See `matlab-calculate-indentation'."
               (bc (matlab-lattr-block-cont startpnt))
               (mc (matlab-lattr-middle-block-cont))
               (ec (matlab-lattr-endless-block-cont))
-              (hc (and (matlab-indent-function-body-p) (matlab-ltype-help-comm)))
+              (hc (and nil (matlab-indent-function-body-p) (matlab-ltype-help-comm)))
               (rc (and (/= 0 matlab-comment-anti-indent)
                        (matlab-ltype-comm)
                        (not (matlab-ltype-help-comm))
@@ -3017,26 +3000,6 @@ If the list is empty, then searches continue backwards through the code."
         (setq syms (cdr syms)))
       (matlab-uniquafy-list (nreverse fl)))))
 
-(defvar matlab-most-recent-variable-list nil
-  "Maintained by `matlab-find-recent-variable'.")
-
-(defun matlab-find-recent-variable (prefix &optional next)
-  "Return the most recently used variable starting with PREFIX as a string.
-See `matlab-find-recent-variable-list' for details.
-In NEXT is non-nil, than continue through the list of elements."
-  (if next
-      (let ((next (car matlab-most-recent-variable-list)))
-        (setq matlab-most-recent-variable-list
-              (cdr matlab-most-recent-variable-list))
-        next)
-    (let ((syms (matlab-find-recent-variable-list prefix))
-          (first nil))
-      (if (eq matlab-completion-technique 'complete)
-          syms
-        (setq first (car syms))
-        (setq matlab-most-recent-variable-list (cdr syms))
-        first))))
-
 (defun matlab-find-user-functions-list (prefix)
   "Return a list of user defined functions that match PREFIX."
   (matlab-navigation-syntax
@@ -3068,208 +3031,6 @@ In NEXT is non-nil, than continue through the list of elements."
         (if (car syms) (setq fl (cons (car syms) fl)))
         (setq syms (cdr syms)))
       (matlab-uniquafy-list (nreverse fl)))))
-
-(defvar matlab-user-function-list nil
-  "Maintained by `matlab-find-user-functions'.")
-
-(defun matlab-find-user-functions (prefix &optional next)
-  "Return a user function that match PREFIX and return it.
-If optional argument NEXT is non-nil, then return the next found
-object."
-  (if next
-      (let ((next (car matlab-user-function-list)))
-        (setq matlab-user-function-list (cdr matlab-user-function-list))
-        next)
-    (let ((syms (matlab-find-user-functions-list prefix))
-          (first nil))
-      (if (eq matlab-completion-technique 'complete)
-          syms
-        (setq first (car syms))
-        (setq matlab-user-function-list (cdr syms))
-        first))))
-
-(defvar matlab-generic-list-placeholder nil
-  "Maintained by `matalb-generic-list-expand'.
-Holds sub-lists of symbols left to be expanded.")
-
-(defun matlab-generic-list-expand (list prefix &optional next)
-  "Return an element from LIST that start with PREFIX.
-If optional NEXT argument is non nil, then the next element in the
-list is used.  nil is returned if there are not matches."
-  (if next
-      (let ((next (car matlab-generic-list-placeholder)))
-        (setq matlab-generic-list-placeholder
-              (cdr matlab-generic-list-placeholder))
-        next)
-    (let ((re (concat "^" (regexp-quote prefix)))
-          (first nil)
-          (fl nil))
-      (while list
-        (if (string-match re (car list))
-            (setq fl (cons (car list) fl)))
-        (setq list (cdr list)))
-      (setq fl (nreverse fl))
-      (if (eq matlab-completion-technique 'complete)
-          fl
-        (setq first (car fl))
-        (setq matlab-generic-list-placeholder (cdr fl))
-        first))))
-
-(defun matlab-solo-completions (prefix &optional next)
-  "Return PREFIX matching elements for solo symbols.
-If NEXT then the next patch from the list is used."
-  (matlab-generic-list-expand matlab-keywords-solo prefix next))
-
-(defun matlab-value-completions (prefix &optional next)
-  "Return PREFIX matching elements for value symbols.
-If NEXT then the next patch from the list is used."
-  (matlab-generic-list-expand matlab-keywords-return prefix next))
-
-(defun matlab-boolean-completions (prefix &optional next)
-  "Return PREFIX matching elements for boolean symbols.
-If NEXT then the next patch from the list is used."
-  (matlab-generic-list-expand matlab-keywords-boolean prefix next))
-
-(defun matlab-property-completions (prefix &optional next)
-  "Return PREFIX matching elements for property names in strings.
-If NEXT then the next property from the list is used."
-  (let ((f (matlab-function-called-at-point))
-        (lst matlab-property-lists)
-        (foundlst nil)
-        (expandto nil))
-    ;; Look for this function.  If it is a known function then we
-    ;; can now use a subset of available properties!
-    (while (and lst (not foundlst))
-      (if (string= (car (car lst)) f)
-          (setq foundlst (cdr (car lst))))
-      (setq lst (cdr lst)))
-    (if foundlst
-        (setq foundlst (append foundlst matlab-core-properties))
-      (setq foundlst matlab-all-known-properties))
-    (setq expandto (matlab-generic-list-expand foundlst prefix next))
-    ;; This looks to see if we have a singular completion.  If so,
-    ;; then return it, and also append the "'" to the end.
-    (cond ((and (listp expandto) (= (length expandto) 1))
-           (setq expandto (list (concat (car expandto) "'"))))
-          ((stringp expandto)
-           (setq expandto (concat expandto "'"))))
-    expandto))
-
-(defvar matlab-last-prefix nil
-  "Maintained by `matlab-complete-symbol'.
-The prefix used for the first completion command.")
-
-(defvar matlab-last-semantic nil
-  "Maintained by `matlab-complete-symbol'.
-The last type of semantic used while completing things.")
-
-(defvar matlab-completion-search-state nil
-  "List of searching things we will be doing.")
-
-(defun matlab-complete-symbol (&optional arg)
-  "Complete a partially typed symbol in a MATLAB mode buffer.
-If the previously entered command was also `matlab-complete-symbol'
-then undo the last completion, and find a new one.
-  The types of symbols tried are based on the semantics of the current
-cursor position.  There are two types of symbols.  For example, if the
-cursor is in an if statement, boolean style functions and symbols are
-tried first.  If the line is blank, then flow control, or high level
-functions are tried first.
-  The completion technique is controlled with `matlab-completion-technique'
-It defaults to incremental completion described above.  If a
-completion list is preferred, then change this to 'complete.  If you
-just want a completion list once, then use the universal argument ARG
-to change it temporarily."
-  (interactive "P")
-  (matlab-navigation-syntax
-    (let* ((prefix (if (and (not (eq last-command 'matlab-complete-symbol))
-                            (member (preceding-char) '(?  ?\t ?\n ?, ?\( ?\[ ?\')))
-                       ""
-                     (buffer-substring-no-properties
-                      (save-excursion (forward-word -1) (point))
-                      (point))))
-           (sem (matlab-lattr-semantics prefix))
-           (matlab-completion-technique
-            (if arg (cond ((eq matlab-completion-technique 'complete)
-                           'increment)
-                          (t 'complete))
-              matlab-completion-technique)))
-      (if (not (eq last-command 'matlab-complete-symbol))
-          (setq matlab-last-prefix prefix
-                matlab-last-semantic sem
-                matlab-completion-search-state
-                (cond ((eq sem 'solo)
-                       '(matlab-solo-completions
-                         matlab-find-user-functions
-                         matlab-find-recent-variable))
-                      ((eq sem 'boolean)
-                       '(matlab-find-recent-variable
-                         matlab-boolean-completions
-                         matlab-find-user-functions
-                         matlab-value-completions))
-                      ((eq sem 'value)
-                       '(matlab-find-recent-variable
-                         matlab-find-user-functions
-                         matlab-value-completions
-                         matlab-boolean-completions))
-                      ((eq sem 'property)
-                       '(matlab-property-completions
-                         matlab-find-user-functions
-                         matlab-find-recent-variable
-                         matlab-value-completions))
-                      (t '(matlab-find-recent-variable
-                           matlab-find-user-functions
-                           matlab-value-completions
-                           matlab-boolean-completions)))))
-      (cond
-        ((eq matlab-completion-technique 'increment)
-         (let ((r nil) (donext (eq last-command 'matlab-complete-symbol)))
-           (while (and (not r) matlab-completion-search-state)
-             (message "Expand with %S" (car matlab-completion-search-state))
-             (setq r (funcall (car matlab-completion-search-state)
-                              matlab-last-prefix donext))
-             (if (not r) (setq matlab-completion-search-state
-                               (cdr matlab-completion-search-state)
-                               donext nil)))
-           (delete-region (point) (progn (forward-char (- (length prefix)))
-                                         (point)))
-           (if r
-               (insert r)
-             (insert matlab-last-prefix)
-             (message "No completions."))))
-        ((eq matlab-completion-technique 'complete)
-         (let ((allsyms (apply 'append
-                               (mapcar (lambda (f) (funcall f prefix))
-                                       matlab-completion-search-state))))
-           (cond ((null allsyms)
-                  (message "No completions.")
-                  (ding))
-                 ((= (length allsyms) 1)
-                  (delete-region (point) (progn
-                                           (forward-char (- (length prefix)))
-                                           (point)))
-                  (insert (car allsyms)))
-                 ((= (length allsyms) 0)
-                  (message "No completions."))
-                 (t
-                  (let* ((al (mapcar (lambda (a) (list a)) allsyms))
-                         (c (try-completion prefix al)))
-                    ;; This completion stuff lets us expand as much as is
-                    ;; available to us. When the completion is the prefix
-                    ;; then we want to display all the strings we've
-                    ;; encountered.
-                    (if (and (stringp c) (not (string= prefix c)))
-                        (progn
-                          (delete-region
-                           (point)
-                           (progn (forward-char (- (length prefix)))
-                                  (point)))
-                          (insert c))
-                      ;; `display-completion-list' does all the complex
-                      ;; ui work for us.
-                      (with-output-to-temp-buffer "*Completions*"
-                        (display-completion-list
-                         (matlab-uniquafy-list allsyms)))))))))))))
 
 (defun matlab-insert-end-block (&optional reindent)
   "Insert and END block based on the current syntax.
@@ -3790,7 +3551,6 @@ desired.  Optional argument FAST is not used."
        ["Uncomment Region" matlab-uncomment-region t]
        ["Indent Synactic Block" matlab-indent-sexp])
       ("Insert"
-       ["Complete Symbol" matlab-complete-symbol t]
        ["Comment" matlab-comment t]
        ["Next case" matlab-insert-next-case t]
        ["End of block" matlab-insert-end-block t]
