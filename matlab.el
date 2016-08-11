@@ -893,6 +893,18 @@ mode.")
 < =\[ \t\n.]*\\)?\\([a-zA-Z0-9_]+\\)" 3))
   "Expressions which find function headings in MATLAB M files.")
 
+(defun matlab-completion-at-point ()
+  (if (looking-back "[\t\n ]\\([a-z_.()A-z]+\\)")
+      (let* ((bnd-expr (cons (match-beginning 1) (match-end 1)))
+             (bnd-last (bounds-of-thing-at-point 'symbol))
+             (expr (buffer-substring-no-properties (car bnd-expr) (cdr bnd-expr)))
+             (res (matlab-shell-completion-list expr)))
+        (list
+         (if bnd-last (car bnd-last) (point))
+         (if bnd-last (cdr bnd-last) (point))
+         res))
+    (error "unexpected")))
+
 ;;* MATLAB mode entry point
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.m$" . matlab-mode))
@@ -951,6 +963,7 @@ All Key Bindings:
   (interactive)
   (kill-all-local-variables)
   (use-local-map matlab-mode-map)
+  (setq completion-at-point-functions '(matlab-completion-at-point t))
   (setq major-mode 'matlab-mode)
   (setq mode-name "MATLAB")
   (if (boundp 'whitespace-modes)
@@ -3843,6 +3856,7 @@ in a popup buffer.
         comint-delimiter-argument-list (list [59]) ; semi colon
         comint-dynamic-complete-functions '(comint-replace-by-expanded-history)
         comint-process-echoes matlab-shell-echoes)
+  (setq completion-at-point-functions '(matlab-completion-at-point t))
   ;; matlab-shell variable setup
   (make-local-variable 'matlab-shell-last-error-anchor)
   (setq matlab-shell-last-error-anchor nil)
