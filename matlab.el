@@ -5210,41 +5210,43 @@ Check `matlab-mode-install-path'" filename))))
          (buffer (matlab-shell-active-p))
          (process (get-buffer-process buffer))
          command-begin
-         command-output-begin
+         answer
          last-cmd)
     (with-current-buffer buffer
       (goto-char (point-max))
       (if (re-search-backward matlab-prompt-regex nil t)
           (setq last-cmd (buffer-substring (match-end 0) (point-max)))
         (setq last-cmd ""))
-      (delete-region (point) (point-max))
+      (delete-region (match-end 0) (point-max))
       (setq command-begin (point))
-      (setq command-output-begin (+ (point) (length command)))
+      (goto-char (point-max))
+      (setq matlab-eval-done nil)
       (process-send-string process command)
-      (while (not (looking-back matlab-prompt-regex))
+      (sit-for 0.05)
+      (while (not matlab-eval-done)
         (accept-process-output process)
         (goto-char (point-max)))
-      (when (looking-back matlab-prompt-regex)
-        (delete-region (match-beginning 0)
-                       (match-end 0)))
-      (if (re-search-backward "^[A-Z_a-z0-9]+ =\n\n?" command-output-begin t)
+      (if (re-search-backward "^[A-Z_a-z0-9]+ =\n\n?" command-begin t)
           (progn
-            (setq answer (buffer-substring-no-properties (match-end 0) (- (point-max) 2)))
+            (setq answer (buffer-substring-no-properties (match-end 0) (- (point-max) 5)))
             (when (= 0 (cl-count ?\n answer))
               (setq answer (string-trim answer))))
-        (setq answer (buffer-substring-no-properties
-                      command-output-begin
-                      (1- (point-max)))))
-      (setq answer (string-trim-right answer))
-      (delete-region command-begin (point-max))
-      (when (eq (char-before) ?\n)
-        (backward-delete-char 1))
-      (process-send-string process "\n")
-      (while (not (looking-back matlab-prompt-regex))
-        (accept-process-output process)
-        (goto-char (point-max)))
+        (setq answer
+              (mapconcat #'identity
+                         (cl-remove-if (lambda (x) (search x command))
+                                       (split-string
+                                        (buffer-substring-no-properties
+                                         (goto-char command-begin)
+                                         (point-max)) "^>> " t))
+                         "\n")))
+      (goto-char (point-max))
+      (when (looking-back matlab-prompt-regex)
+        (delete-region command-begin
+                       (match-beginning 0)))
       (insert last-cmd)
-      answer)))
+      (if (string= answer "")
+          "(no output)"
+        answer))))
 
 (defun matlab-goto-symbol ()
   (interactive)
