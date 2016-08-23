@@ -3772,13 +3772,27 @@ Try C-h f matlab-shell RET"))
           (setq gud-find-file 'gud-matlab-find-file)
 
           (set-process-filter (get-buffer-process (current-buffer))
-                              'gud-filter)
+                              'matlab-eval-filter)
           (set-process-sentinel (get-buffer-process (current-buffer))
-                                'gud-sentinel)
+                                'matlab-eval-sentinel)
           (gud-set-buffer)))
     ;; Comint and GUD both try to set the mode.  Now reset it to
     ;; matlab mode.
     (matlab-shell-mode)))
+
+(defun matlab-eval-sentinel (process event)
+  (message "MATLAB: %s" event))
+
+(defvar matlab-eval-done nil)
+
+(defun matlab-eval-filter (process str)
+  (when (string-match-p ">> \\'" str)
+    (setq matlab-eval-done t))
+  (let ((buffer (process-buffer process)))
+    (if (string= (buffer-name buffer) " *matlab*")
+        (with-current-buffer buffer
+          (insert str))
+      (comint-output-filter process str))))
 
 (defcustom matlab-shell-logo
   (if (fboundp 'locate-data-file)
