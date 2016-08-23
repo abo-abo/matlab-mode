@@ -4264,8 +4264,8 @@ Optional argument ARG describes the number of chars to delete."
 (defun matlab-addpath (dir)
   (matlab-eval (format "addpath('%s')" dir)))
 
-(defvar matlab-mode-root (or load-file-name
-                             default-directory))
+(defvar matlab-mode-root (file-name-directory (or load-file-name
+                                                  default-directory)))
 
 (defun matlab-shell-completion-list (str)
   "Get a list of completions from MATLAB.
