@@ -5207,7 +5207,8 @@ Check `matlab-mode-install-path'" filename))))
   (unless (string-match "\n\\'" command)
     (setq command (concat command "\n")))
   (let* ((inhibit-field-text-motion t)
-         (buffer (matlab-shell-active-p))
+         (buffer (or (matlab-shell-active-p)
+                     (matlab-shell)))
          (process (get-buffer-process buffer))
          command-begin
          answer
