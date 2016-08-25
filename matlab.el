@@ -3958,6 +3958,8 @@ in a popup buffer.
         ;; XEmacs has problems w/ this variable.  Set it here.
         (set-marker comint-last-output-start (point-max))))
   (run-hooks 'matlab-shell-mode-hook)
+  ;; ensure emacsdocomplete.m is on path
+  (matlab-addpath (expand-file-name "toolbox" matlab-mode-root))
   (matlab-show-version))
 
 (defvar gud-matlab-marker-regexp-prefix "error:\\|opentoline"
@@ -4270,8 +4272,6 @@ Optional argument ARG describes the number of chars to delete."
 (defun matlab-shell-completion-list (str)
   "Get a list of completions from MATLAB.
 STR is a substring to complete."
-  (when (string= "0" (matlab-fboundp "emacsdocomplete"))
-    (matlab-addpath (expand-file-name "toolbox" matlab-mode-root)))
   (let* ((cmd (concat "emacsdocomplete('" str "')"))
          (output (matlab-eval cmd))
          completions)
