@@ -3732,9 +3732,9 @@ a console application."
   ;; MATLAB shell does not work by default on the Windows platform.  Only
   ;; permit it's operation when the shell command string is different from
   ;; the default value.  (True when the engine program is running.)
-  (if (and (or (eq window-system 'pc) (eq window-system 'w32))
-           (string= matlab-shell-command "matlab"))
-      (error "MATLAB cannot be run as a inferior process.  \
+  (when (and (or (eq window-system 'pc) (eq window-system 'w32))
+             (string= matlab-shell-command "matlab"))
+    (error "MATLAB cannot be run as a inferior process.  \
 Try C-h f matlab-shell RET"))
 
   (require 'shell)
@@ -3761,21 +3761,20 @@ Try C-h f matlab-shell RET"))
               nil matlab-shell-command-switches)))
     (setq shell-dirtrackp t)
     (comint-mode)
-    (if matlab-shell-enable-gud-flag
-        (progn
-          (gud-mode)
-          (make-local-variable 'matlab-prompt-seen)
-          (setq matlab-prompt-seen nil)
-          (make-local-variable 'gud-marker-filter)
-          (setq gud-marker-filter 'gud-matlab-marker-filter)
-          (make-local-variable 'gud-find-file)
-          (setq gud-find-file 'gud-matlab-find-file)
+    (when matlab-shell-enable-gud-flag
+      (gud-mode)
+      (make-local-variable 'matlab-prompt-seen)
+      (setq matlab-prompt-seen nil)
+      (make-local-variable 'gud-marker-filter)
+      (setq gud-marker-filter 'gud-matlab-marker-filter)
+      (make-local-variable 'gud-find-file)
+      (setq gud-find-file 'gud-matlab-find-file)
 
-          (set-process-filter (get-buffer-process (current-buffer))
-                              'matlab-eval-filter)
-          (set-process-sentinel (get-buffer-process (current-buffer))
-                                'matlab-eval-sentinel)
-          (gud-set-buffer)))
+      (set-process-filter (get-buffer-process (current-buffer))
+                          'matlab-eval-filter)
+      (set-process-sentinel (get-buffer-process (current-buffer))
+                            'matlab-eval-sentinel)
+      (gud-set-buffer))
     ;; Comint and GUD both try to set the mode.  Now reset it to
     ;; matlab mode.
     (matlab-shell-mode)))
