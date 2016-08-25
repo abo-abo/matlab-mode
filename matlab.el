@@ -3623,7 +3623,7 @@ desired.  Optional argument FAST is not used."
   "The name of the command to be run which will start the MATLAB process."
   :type 'string)
 
-(defcustom matlab-shell-command-switches '("-nodesktop")
+(defcustom matlab-shell-command-switches '("-nodesktop" "-nosplash")
   "Command line parameters run with `matlab-shell-command'.
 Command switches are a list of strings.  Each entry is one switch."
   :type '(list :tag "Switch: "))
