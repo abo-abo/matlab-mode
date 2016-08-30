@@ -3783,13 +3783,23 @@ Try C-h f matlab-shell RET"))
 (defun matlab-eval-sentinel (process event)
   (message "MATLAB: %s" event))
 
-(defvar matlab-eval-done nil)
+(defvar matlab-eval-done nil
+  "Boolean state of the eval.
+`matlab-eval' sets this to nil before `process-send-string'.
+`matlab-eval-filter' sets this to t when it sees a string ending
+in the MATLAB prompt.")
+
+(defconst matlab-bg-eval-buffer " *matlab-eval*"
+  "The output of `matlab-eval' is redirected to this buffer.
+Instead of polluting the `matlab-shell'.")
 
 (defun matlab-eval-filter (process str)
+  "Use `comint-output-filter' for `matlab-shell'.
+Simply `insert' into `matlab-bg-eval-buffer' for `matlab-eval'."
   (when (string-match-p ">> \\'" str)
     (setq matlab-eval-done t))
   (let ((buffer (process-buffer process)))
-    (if (string= (buffer-name buffer) " *matlab*")
+    (if (string= (buffer-name buffer) matlab-bg-eval-buffer)
         (with-current-buffer buffer
           (insert str))
       (comint-output-filter process str))))
@@ -5204,50 +5214,49 @@ Check `matlab-mode-install-path'" filename))))
 ;;* eval
 (defun matlab-eval (command)
   "Collect output of COMMAND without changing point."
+  ;; `process-send-string' needs final newline
   (unless (string-match "\n\\'" command)
     (setq command (concat command "\n")))
-  (let* ((inhibit-field-text-motion t)
-         (buffer (or (matlab-shell-active-p)
-                     (matlab-shell)))
+  (let* ((buffer (or (matlab-shell-active-p)
+                     (save-window-excursion
+                       (matlab-shell))))
          (process (get-buffer-process buffer))
-         command-begin
-         answer
-         last-cmd)
-    (with-current-buffer buffer
-      (goto-char (point-max))
-      (if (re-search-backward matlab-prompt-regex nil t)
-          (setq last-cmd (buffer-substring (match-end 0) (point-max)))
-        (setq last-cmd ""))
-      (delete-region (match-end 0) (point-max))
-      (setq command-begin (point))
-      (goto-char (point-max))
-      (setq matlab-eval-done nil)
-      (process-send-string process command)
-      (sit-for 0.05)
-      (while (not matlab-eval-done)
-        (accept-process-output process)
-        (goto-char (point-max)))
-      (if (re-search-backward "^[A-Z_a-z0-9]+ =\n\n?" command-begin t)
-          (progn
-            (setq answer (buffer-substring-no-properties (match-end 0) (- (point-max) 5)))
-            (when (= 0 (cl-count ?\n answer))
-              (setq answer (string-trim answer))))
-        (setq answer
-              (mapconcat #'identity
-                         (cl-remove-if (lambda (x) (search x command))
-                                       (split-string
-                                        (buffer-substring-no-properties
-                                         (goto-char command-begin)
-                                         (point-max)) "^>> " t))
-                         "\n")))
-      (goto-char (point-max))
-      (when (looking-back matlab-prompt-regex)
-        (delete-region command-begin
-                       (match-beginning 0)))
-      (insert last-cmd)
-      (if (string= answer "")
-          "(no output)"
-        answer))))
+         (eval-buffer (get-buffer-create matlab-bg-eval-buffer))
+         answer)
+    ;; don't mess with the main shell buffer
+    (set-process-buffer process eval-buffer)
+    (with-current-buffer eval-buffer
+      (erase-buffer))
+    (setq matlab-eval-done nil)
+    (unwind-protect
+         (progn
+           (process-send-string process command)
+           (with-current-buffer eval-buffer
+             (while (not matlab-eval-done)
+               (accept-process-output process)
+               (goto-char (point-max)))
+             ;; MATLAB-specific backspace char nonsense
+             (goto-char (point-min))
+             (while (re-search-forward "" nil t)
+               (delete-char -2))
+             (goto-char (point-max))
+             (if (re-search-backward "^[A-Z_a-z0-9]+ =\n\n?" nil t)
+                 (progn
+                   (setq answer (buffer-substring-no-properties (match-end 0) (- (point-max) 5)))
+                   (when (= 0 (cl-count ?\n answer))
+                     (setq answer (string-trim answer))))
+               (setq answer
+                     (mapconcat #'identity
+                                (cl-remove-if (lambda (x) (search x command))
+                                              (split-string
+                                               (buffer-substring-no-properties
+                                                (point-min)
+                                                (point-max)) "^>> " t))
+                                "\n")))))
+      (set-process-buffer process buffer))
+    (if (string= answer "")
+        "(no output)"
+      answer)))
 
 (defun matlab-goto-symbol ()
   (interactive)
