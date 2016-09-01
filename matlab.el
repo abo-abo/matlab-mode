@@ -405,7 +405,6 @@ evaluating it."
 
 (defvar matlab-insert-map
   (let ((km (make-sparse-keymap)))
-    (define-key km "e" 'matlab-insert-end-block)
     (define-key km "'" 'matlab-stringify-region)
     ;; Not really inserts, but auto coding stuff
     (define-key km "\C-s" 'matlab-ispell-strings)
@@ -819,8 +818,6 @@ Convenient navigation commands are:
  \\[matlab-backward-sexp] - Move backwards over a syntactic block of code.
 
 Convenient template insertion commands:
- \\[matlab-insert-end-block] - Insert a matched END statement.  With \
-optional ARG, reindent.
  \\[matlab-stringify-region] - Convert plaintext in region to a string \
 with correctly quoted chars.
 
@@ -2892,29 +2889,6 @@ If the list is empty, then searches continue backwards through the code."
         (setq syms (cdr syms)))
       (matlab-uniquafy-list (nreverse fl)))))
 
-(defun matlab-insert-end-block (&optional reindent)
-  "Insert and END block based on the current syntax.
-Optional argument REINDENT indicates if the specified block should be re-indented."
-  (interactive "P")
-  (if (not (matlab-ltype-empty)) (progn (end-of-line) (insert "\n")))
-  (let ((valid t) (begin nil))
-    (save-excursion
-      (condition-case nil
-          (progn
-            (matlab-backward-sexp t)
-            (setq begin (point)
-                  valid (buffer-substring-no-properties
-                         (point) (save-excursion
-                                   (re-search-forward "[\n,;.]" nil t)
-                                   (point)))))
-        (error (setq valid nil))))
-    (if (not valid)
-        (error "No block to end")
-      (insert "end")
-      (if (stringp valid) (insert " % " valid))
-      (matlab-indent-line)
-      (if reindent (indent-region begin (point) nil)))))
-
 (defun matlab-stringify-region (begin end)
   "Put MATLAB 's around region, and quote all quotes in the string.
 Stringification allows you to type in normal MATLAB code, mark it, and
@@ -3392,7 +3366,6 @@ desired.  Optional argument FAST is not used."
        ["Indent Synactic Block" matlab-indent-sexp])
       ("Insert"
        ["Comment" matlab-comment t]
-       ["End of block" matlab-insert-end-block t]
        ["Stringify Region" matlab-stringify-region t])
       ("Customize"
                                         ;      ["Auto Fill Counts Elipsis"
