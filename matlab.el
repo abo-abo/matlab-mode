@@ -256,11 +256,6 @@ If `matlab-fill-count-ellipsis-flag' is non nil, this shortens the
   "String to start comment on line with code."
   :type 'string)
 
-(defcustom matlab-comment-region-s "% $$$ "
-  "String inserted by \\[matlab-comment-region] at start of each line in \
-region."
-  :type 'string)
-
 (defcustom matlab-verify-on-save-flag t
   "Non-nil means to verify M whenever we save a file."
   :type 'boolean)
@@ -421,10 +416,8 @@ evaluating it."
 
 (defvar matlab-mode-map
   (let ((km (make-sparse-keymap)))
-    (define-key km [return] 'matlab-return)
+    (define-key km (kbd "RET") 'matlab-return)
     (define-key km "%" 'matlab-electric-comment)
-    (define-key km "\C-c;" 'matlab-comment-region)
-    (define-key km "\C-c:" 'matlab-uncomment-region)
     (define-key km [(control c) return] 'matlab-comment-return)
     (define-key km [(control c) (control c)] matlab-insert-map)
     (define-key km [(control c) (control f)] 'matlab-fill-comment-line)
@@ -450,8 +443,6 @@ evaluating it."
     (if (string-match "XEmacs" emacs-version)
         (define-key km [(control meta button1)] 'matlab-find-file-click)
       (define-key km [(control meta mouse-2)] 'matlab-find-file-click))
-    (substitute-key-definition 'comment-region 'matlab-comment-region
-                               km)
     (define-key km [left-fringe mouse-1] 'matlab-dbg-breakpoint-toggle)
     (define-key km (kbd "M-.") 'matlab-goto-symbol)
     (define-key km (kbd "M-,") 'pop-tag-mark)
@@ -815,7 +806,6 @@ mode.")
   "MATLAB(R) mode is a major mode for editing MATLAB dot-m files.
 \\<matlab-mode-map>
 Convenient editing commands are:
- \\[matlab-comment-region]   - Comment/Uncomment out a region of code.
  \\[matlab-fill-comment-line] - Fill the current comment line.
  \\[matlab-fill-region] - Fill code and comments in region.
  \\[matlab-fill-paragraph]     - Refill the current command or comment.
@@ -997,8 +987,7 @@ All Key Bindings:
   "Recurse backwards until a code line is found."
   (if (= -1 (forward-line -1))
       nil
-    (if (or (matlab-ltype-empty)
-            (matlab-ltype-comm-ignore))
+    (if (matlab-ltype-empty)
         (matlab-find-prev-line)
       t)))
 
@@ -1571,12 +1560,6 @@ Return the symbol 'blockcomm if it is a block comment start."
            'blockcomm)
           (t nil))))
 
-(defun matlab-ltype-comm-ignore ()
-  "Return t if current line is a MATLAB comment region line."
-  (save-excursion
-    (beginning-of-line)
-    (looking-at (concat "[ \t]*" matlab-comment-region-s))))
-
 (defun matlab-ltype-help-comm ()
   "Return t if the current line is part of the MATLAB help comment."
   (save-excursion
@@ -2004,8 +1987,7 @@ Argument CURRENT-INDENTATION is what the previous line recommends for indentatio
       ((matlab-ltype-comm)
        (cond
          ;; HELP COMMENT and COMMENT REGION
-         ((or (matlab-ltype-help-comm)
-              (matlab-ltype-comm-ignore))
+         ((matlab-ltype-help-comm)
           (list 'comment-help matlab-indent-level))
          ;; COMMENT Continued From Previous Line
          ((setq tmp (matlab-ltype-continued-comm))
@@ -2433,38 +2415,6 @@ Optional argument SOFT indicates that the newline is soft, and not hard."
   "Indent a comment line in `matlab-mode'."
   (matlab-calc-indent))
 
-(defun matlab-comment-region (beg-region end-region arg)
-  "Comments every line in the region.
-Puts `matlab-comment-region-s' at the beginning of every line in the region.
-BEG-REGION and END-REGION are arguments which specify the region boundaries.
-With non-nil ARG, uncomments the region."
-  (interactive "*r\nP")
-  (let ((end-region-mark (make-marker)) (save-point (point-marker)))
-    (set-marker end-region-mark end-region)
-    (goto-char beg-region)
-    (beginning-of-line)
-    (if (not arg)
-        (progn (insert matlab-comment-region-s)
-               (while (and (= (forward-line 1) 0)
-                           (< (point) end-region-mark))
-                 (insert matlab-comment-region-s)))
-      (let ((com (regexp-quote matlab-comment-region-s)))
-        (if (looking-at com)
-            (delete-region (point) (match-end 0)))
-        (while (and (= (forward-line 1) 0)
-                    (< (point) end-region-mark))
-          (if (looking-at com)
-              (delete-region (point) (match-end 0))))))
-    (goto-char save-point)
-    (set-marker end-region-mark nil)
-    (set-marker save-point nil)))
-
-(defun matlab-uncomment-region (beg end)
-  "Uncomment the current region if it is commented out.
-Argument BEG and END indicate the region to uncomment."
-  (interactive "*r")
-  (matlab-comment-region beg end t))
-
 ;;* Filling
 (defun matlab-set-comm-fill-prefix ()
   "Set the `fill-prefix' for the current (comment) line."
@@ -2625,8 +2575,6 @@ filling which will automatically insert `...' and the end of a line."
                           0))))
     (if (> (current-column) fill-column)
         (cond
-          ((matlab-ltype-comm-ignore)
-           nil)
           ((or (matlab-ltype-comm)
                (and (save-excursion (move-to-column fill-column)
                                     (matlab-cursor-in-comment))
@@ -3461,8 +3409,6 @@ desired.  Optional argument FAST is not used."
         (save-excursion (matlab-comment-on-line))]
        ["Join Comment" matlab-join-comment-lines
         (save-excursion (matlab-comment-on-line))]
-       ["Comment Region" matlab-comment-region t]
-       ["Uncomment Region" matlab-uncomment-region t]
        ["Indent Synactic Block" matlab-indent-sexp])
       ("Insert"
        ["Comment" matlab-comment t]
