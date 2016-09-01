@@ -527,52 +527,6 @@ Argument LIMIT is the maximum distance to scan."
       (goto-char e)
       t)))
 
-(defun matlab-find-unreachable-code (limit)
-  "Find code that is if'd out with if(0) or if(false), and mark it as a comment.
-The if(0) and else/end construct should be highlighted differently.
-Argument LIMIT is the maximum distance to search."
-  (if (and (< (point) limit)
-           (re-search-forward
-            "\\<\\(if\\>\\s-*(?\\s-*\\(0\\|false\\)\\s-*)?$\\)"
-            limit t))
-      (let ((b1 (match-beginning 1))
-            (e1 (match-end 1))
-            (b2 nil) (e2 nil)
-            (b3 nil) (e3 nil))
-        (goto-char b1)
-        (condition-case nil
-            (progn
-              ;; Go forward over the matlab sexp.  Include scanning
-              ;; for ELSE since parts of the ELSE block are not
-              ;; `commented out'.
-              (matlab-forward-sexp t)
-              (forward-word -1)
-              ;; Is there an ELSE in this block?
-              (if (looking-at (matlab-block-mid-re))
-                  (progn
-                    (setq b3 (match-beginning 0)
-                          e3 (match-end 0))
-                    ;; Now find the REAL end.
-                    (matlab-forward-sexp)
-                    (forward-word -1)))
-              ;; End of block stuff
-              (if (looking-at (matlab-block-end-re))
-                  (progn
-                    (setq b2 (match-beginning 0)
-                          e2 (match-end 0))
-                    ;; make sure something exists...
-                    (if (not b3) (setq b3 b2 e3 e2)))
-                (error "Eh?"))
-              ;; Ok, build up some match data.
-              (set-match-data
-               (list b1 e2              ;the real deal.
-                     b1 e1              ;if (0)
-                     b2 e2              ;end
-                     b3 e3              ;else (if applicable.)
-                     b1 e3))            ;body commented out.
-              t)
-          (error nil)))))
-
 (defun matlab-font-lock-nested-function-keyword-match (limit)
   "Find next nested function/end keyword for font-lock.
 Argument LIMIT is the maximum distance to search."
@@ -698,14 +652,6 @@ Customizing this variable is only useful if `regexp-opt' is available."
    ;; dereferencing part.
    '("\\(^\\|[;,]\\)[ \t]*\\(end\\)\\b"
      2 (if (matlab-valid-end-construct-p) font-lock-keyword-face nil))
-   ;; How about unreachable code?  MUsT BE AFTER KEYWORDS in order to
-   ;; get double-highlighting.
-   '(matlab-find-unreachable-code
-     (1 'underline prepend)             ;if part
-     (2 'underline prepend)             ;end part
-     (3 'underline prepend)             ;else part (if applicable)
-     (4 font-lock-comment-face prepend) ;commented out part.
-     )
    ;; block comments need to be commented out too!
    '(matlab-find-block-comments
      (1 font-lock-comment-face prepend) ; commented out
