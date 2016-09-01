@@ -405,7 +405,6 @@ evaluating it."
 
 (defvar matlab-insert-map
   (let ((km (make-sparse-keymap)))
-    (define-key km "c" 'matlab-insert-next-case)
     (define-key km "e" 'matlab-insert-end-block)
     (define-key km "'" 'matlab-stringify-region)
     ;; Not really inserts, but auto coding stuff
@@ -820,7 +819,6 @@ Convenient navigation commands are:
  \\[matlab-backward-sexp] - Move backwards over a syntactic block of code.
 
 Convenient template insertion commands:
- \\[matlab-insert-next-case] - Insert the next CASE condition in a SWITCH.
  \\[matlab-insert-end-block] - Insert a matched END statement.  With \
 optional ARG, reindent.
  \\[matlab-stringify-region] - Convert plaintext in region to a string \
@@ -2917,24 +2915,6 @@ Optional argument REINDENT indicates if the specified block should be re-indente
       (matlab-indent-line)
       (if reindent (indent-region begin (point) nil)))))
 
-(defun matlab-insert-next-case ()
-  "Insert a case statement inside this switch statement."
-  (interactive)
-  ;; First, make sure we are where we think we are.
-  (let ((valid t))
-    (save-excursion
-      (condition-case nil
-          (progn
-            (matlab-backward-sexp t)
-            (setq valid (looking-at "switch")))
-        (error (setq valid nil))))
-    (if (not valid)
-        (error "Not in a switch statement")))
-  (if (not (matlab-ltype-empty)) (progn (end-of-line) (insert "\n")))
-  (indent-to 0)
-  (insert "case ")
-  (matlab-indent-line))
-
 (defun matlab-stringify-region (begin end)
   "Put MATLAB 's around region, and quote all quotes in the string.
 Stringification allows you to type in normal MATLAB code, mark it, and
@@ -3412,7 +3392,6 @@ desired.  Optional argument FAST is not used."
        ["Indent Synactic Block" matlab-indent-sexp])
       ("Insert"
        ["Comment" matlab-comment t]
-       ["Next case" matlab-insert-next-case t]
        ["End of block" matlab-insert-end-block t]
        ["Stringify Region" matlab-stringify-region t])
       ("Customize"
