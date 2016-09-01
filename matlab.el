@@ -54,6 +54,7 @@
 (require 'derived)
 (require 'hydra)
 (require 'gdb-mi)
+(require 'matlab-debug)
 
 (eval-when-compile
   (require 'gud)
@@ -451,42 +452,12 @@ evaluating it."
       (define-key km [(control meta mouse-2)] 'matlab-find-file-click))
     (substitute-key-definition 'comment-region 'matlab-comment-region
                                km)
-    ;; (define-key km [left-margin mouse-1] 'matlab-dbg-breakpoint-toggle)
     (define-key km [left-fringe mouse-1] 'matlab-dbg-breakpoint-toggle)
     (define-key km (kbd "M-.") 'matlab-goto-symbol)
     (define-key km (kbd "M-,") 'pop-tag-mark)
+    (define-key km (kbd "C-o") 'hydra-matlab/body)
     km)
   "The keymap used in `matlab-mode'.")
-
-(defun matlab-dbg-breakpoint-toggle (event)
-  (interactive "e")
-  (mouse-minibuffer-check event)
-  (let ((posn (event-end event)))
-    (with-selected-window (posn-window posn)
-      (if (buffer-file-name)
-          (if (numberp (posn-point posn))
-              (save-excursion
-                (goto-char (posn-point posn))
-                (if (or (posn-object posn)
-                        (memq (car (fringe-bitmaps-at-pos (posn-point posn)))
-                              '(breakpoint)))
-                    (matlab-dbg-breakpoint-remove posn)
-                  (matlab-dbg-breakpoint-add (posn-point posn))))))
-      (posn-set-point posn))))
-
-(defun matlab-dbg-breakpoint-remove (posn)
-  (with-selected-window (posn-window posn)
-    (let ((pt (posn-point posn))
-          (file (buffer-file-name))
-          (line (line-number-at-pos)))
-      (gdb-remove-strings pt (1+ pt))
-      (matlab-eval (format "dbclear in %s at %d" file line)))))
-
-(defun matlab-dbg-breakpoint-add (point)
-  (gdb-put-string nil point `(left-fringe breakpoint))
-  (let ((file (buffer-file-name))
-        (line (line-number-at-pos)))
-    (matlab-eval (format "dbstop in %s at %d" file line))))
 
 ;;* Font locking keywords
 (defvar matlab-string-start-regexp "\\(^\\|[^]})a-zA-Z0-9_.']\\)"
@@ -699,13 +670,6 @@ Customizing this variable is only useful if `regexp-opt' is available."
 Customizing this variable is only useful if `regexp-opt' is available."
   :type '(repeat (string :tag "HG Keyword: ")))
 
-(defcustom matlab-debug-list '("dbstop" "dbclear" "dbcont" "dbdown" "dbmex"
-                               "dbstack" "dbstatus" "dbstep" "dbtype" "dbup"
-                               "dbquit")
-  "List of debug commands used in highlighting.
-Customizing this variable is only useful if `regexp-opt' is available."
-  :type '(repeat (string :tag "Debug Keyword: ")))
-
 ;; font-lock keywords
 (defvar matlab-font-lock-keywords
   (list
@@ -843,16 +807,7 @@ ui\\(cont\\(ext\\(\\|menu\\)\\|rol\\)\\|menu\\|\
           '(1 font-lock-reference-face prepend))
     ;; continuation ellipsis.
     '("[^.]\\(\\.\\.\\.+\\)\\([^\n]*\\)" (1 'underline)
-      (2 font-lock-comment-face))
-    ;; How about debugging statements?
-    ;;'("\\<\\(db\\sw+\\)\\>" 1 'bold)
-    (list
-     (if (fboundp 'regexp-opt)
-         (concat "\\<\\(" (regexp-opt matlab-debug-list) "\\)\\>")
-       ;; pre-regexp-opt days.
-       "\\<\\(db\\(c\\(lear\\|ont\\)\\|down\\|mex\\|quit\\|\
-st\\(a\\(ck\\|tus\\)\\|ep\\|op\\)\\|type\\|up\\)\\)\\>")
-     '(0 'bold)))
+      (2 font-lock-comment-face)))
    (if matlab-handle-simulink
        ;; Simulink functions, but only if the user wants it.
        (list (list (concat "\\<\\(\\([sg]et_param\\|sim\\([gs]et\\)?\\|"
@@ -3659,10 +3614,6 @@ This file is read to initialize the comint input ring.")
   "Number of history elements to keep."
   :type 'integer)
 
-(defcustom matlab-shell-enable-gud-flag t
-  "Non-nil means to use GUD mode when running the MATLAB shell."
-  :type 'boolean)
-
 (defcustom matlab-shell-mode-hook nil
   "List of functions to call on entry to MATLAB shell mode."
   :type 'hook)
@@ -3719,9 +3670,6 @@ This name will have *'s surrounding it.")
           matlab-really-gaudy-font-lock-keywords)
   "Keyword symbol used for really gaudy font-lock symbols.")
 
-(defvar matlab-prompt-seen nil
-  "Track visibility of MATLAB prompt in MATLAB Shell.")
-
 ;;;###autoload
 (defun matlab-shell ()
   "Create a buffer with MATLAB running as a subprocess.
@@ -3739,14 +3687,6 @@ Try C-h f matlab-shell RET"))
 
   (require 'shell)
   (require 'gud)
-
-  ;; Make sure this is safe...
-  (if (and matlab-shell-enable-gud-flag (fboundp 'gud-def))
-      ;; We can continue using GUD
-      nil
-    (message "Sorry, your emacs cannot use the MATLAB Shell GUD features.")
-    (setq matlab-shell-enable-gud-flag nil))
-
   (switch-to-buffer (concat "*" matlab-shell-buffer-name "*"))
   (if (matlab-shell-active-p)
       nil
@@ -3761,20 +3701,6 @@ Try C-h f matlab-shell RET"))
               nil matlab-shell-command-switches)))
     (setq shell-dirtrackp t)
     (comint-mode)
-    (when matlab-shell-enable-gud-flag
-      (gud-mode)
-      (make-local-variable 'matlab-prompt-seen)
-      (setq matlab-prompt-seen nil)
-      (make-local-variable 'gud-marker-filter)
-      (setq gud-marker-filter 'gud-matlab-marker-filter)
-      (make-local-variable 'gud-find-file)
-      (setq gud-find-file 'gud-matlab-find-file)
-
-      (set-process-filter (get-buffer-process (current-buffer))
-                          'matlab-eval-filter)
-      (set-process-sentinel (get-buffer-process (current-buffer))
-                            'matlab-eval-sentinel)
-      (gud-set-buffer))
     ;; Comint and GUD both try to set the mode.  Now reset it to
     ;; matlab mode.
     (matlab-shell-mode)
@@ -3926,9 +3852,6 @@ in a popup buffer.
     '("MATLAB"
       ["Goto last error" matlab-shell-last-error t]
       "----"
-      ["Stop On Errors" matlab-shell-dbstop-error t]
-      ["Don't Stop On Errors" matlab-shell-dbclear-error t]
-      "----"
       ["Run Command" matlab-shell-run-command t]
       ["Describe Variable" matlab-shell-describe-variable t]
       ["Describe Command" matlab-shell-describe-command t]
@@ -3944,42 +3867,14 @@ in a popup buffer.
        ]
       ["Exit" matlab-shell-exit t]))
   (easy-menu-add matlab-shell-menu matlab-shell-mode-map)
-
-  (if matlab-shell-enable-gud-flag
-      (progn
-        (gud-def gud-break "dbstop at %l in %f" "\C-b" "Set breakpoint at current line.")
-        (gud-def gud-remove "dbclear at %l in %f" "\C-d" "Remove breakpoint at current line")
-        (gud-def gud-step "dbstep in;\ndbhotlink(1)" "\C-s" "Step one source line, possibly into a function.")
-        (gud-def gud-next "dbstep %p;\ndbhotlink(1)" "\C-n" "Step over one source line.")
-        (gud-def gud-cont "dbcont;\ndbhotlink(1)" "\C-r" "Continue with display.")
-        (gud-def gud-finish "dbquit" "\C-f" "Finish executing current function.")
-        (gud-def gud-up "dbup;\n[~,a___]=dbstack;\ndbhotlink(a___)" "<" "Up N stack frames (numeric arg).")
-        (gud-def gud-down "dbdown;\n[~,a___]=dbstack;\ndbhotlink(a___)" ">" "Down N stack frames (numeric arg).")
-        (gud-def gud-print "%e" "\C-p" "Evaluate M expression at point.")
-        (if (fboundp 'gud-make-debug-menu)
-            (gud-make-debug-menu))
-        (if (fboundp 'gud-overload-functions)
-            (gud-overload-functions
-             '((gud-massage-args . gud-matlab-massage-args)
-               (gud-marker-filter . gud-matlab-marker-filter)
-               (gud-find-file . gud-matlab-find-file))))
-        ;; XEmacs doesn't seem to have this concept already.  Oh well.
-        (setq gud-marker-acc nil)
-        ;; XEmacs has problems w/ this variable.  Set it here.
-        (set-marker comint-last-output-start (point-max))))
   (run-hooks 'matlab-shell-mode-hook)
   ;; ensure emacsdocomplete.m is on path
   (matlab-addpath (expand-file-name "toolbox" matlab-mode-root))
   (matlab-show-version))
 
-(defvar gud-matlab-marker-regexp-prefix "error:\\|opentoline"
-  "A prefix to scan for to know if output might be scarfed later.")
-
 (defvar matlab-shell-html-map
   (let ((km (make-sparse-keymap)))
-    (if (string-match "XEmacs" emacs-version)
-        (define-key km [button2] 'matlab-shell-html-click)
-      (define-key km [mouse-2] 'matlab-shell-html-click))
+    (define-key km [mouse-2] 'matlab-shell-html-click)
     (define-key km [return] 'matlab-shell-html-go)
     km)
   "Keymap used on overlays that represent errors.")
@@ -4111,129 +4006,6 @@ Argument STR is the text that might have errors in it."
         (overlay-put O 'first-in-error-stack first))
       ;; Once we've found something, don't scan it again.
       (setq matlab-shell-last-error-anchor (point-marker)))))
-
-(defvar gud-matlab-marker-regexp-1 "^K>>"
-  "Regular expression for finding a file line-number.")
-
-(defvar gud-matlab-marker-regexp-2
-  (concat "^> In \\(" matlab-anchor-beg
-          "\\|\\)\\([-.a-zA-Z0-9_>/@]+\\) \\((\\w+) \\|\\)at line \\([0-9]+\\)[ \n]+")
-  "Regular expression for finding a file line-number.
-Please note: The leading > character represents the current stack frame, so if
-there are several frames, this makes sure we pick the right one to popup.")
-
-(defun gud-matlab-massage-args (file args)
-  "Argument massager for starting matlab file.
-I don't think I have to do anything, but I'm not sure.
-FILE is ignored, and ARGS is returned."
-  args)
-
-(defun gud-matlab-marker-filter (string)
-  "Filters STRING for the Unified Debugger based on MATLAB output."
-  (if matlab-prompt-seen
-      nil
-    (when (string-match ">> " string)
-      (if matlab-shell-use-emacs-toolbox
-          ;; Use our local toolbox directory.
-          (process-send-string
-           (get-buffer-process gud-comint-buffer)
-           (format "addpath('%s','-begin'); rehash; emacsinit('%s');\n"
-                   (expand-file-name "toolbox"
-                                     (file-name-directory
-                                      (locate-library "matlab")))
-                   matlab-shell-emacsclient-command))
-        ;; User doesn't want to use our fancy toolbox directory
-        (process-send-string
-         (get-buffer-process gud-comint-buffer)
-         "if usejava('jvm'), \
-com.mathworks.services.Prefs.setBooleanPref('EditorGraphicalDebugging', false); \
-end\n"))
-      ;; Mark that we've seen at least one prompt.
-      (setq matlab-prompt-seen t)))
-  (let ((garbage (concat "\\(" (regexp-quote "\C-g") "\\|"
-                         (regexp-quote "\033[H0") "\\|"
-                         (regexp-quote "\033[H\033[2J") "\\|"
-                         (regexp-quote "\033H\033[2J") "\\)")))
-    (while (string-match garbage string)
-      (if (= (aref string (match-beginning 0)) ?\C-g)
-          (beep t))
-      (setq string (replace-match "" t t string))))
-
-  (setq gud-marker-acc (concat gud-marker-acc string))
-  (let ((output "") (frame nil))
-
-    (when (not frame)
-      (when (string-match gud-matlab-marker-regexp-1 gud-marker-acc)
-        (when (not frame)
-          ;; If there is a debug prompt, and no frame currently set,
-          ;; go find one.
-          (let ((url gud-marker-acc)
-                ef el)
-            (cond
-              ((string-match "^error:\\(.*\\),\\([0-9]+\\),\\([0-9]+\\)$" url)
-               (setq ef (substring url (match-beginning 1) (match-end 1))
-                     el (substring url (match-beginning 2) (match-end 2))))
-              ((string-match "opentoline('\\([^']+\\)',\\([0-9]+\\),\\([0-9]+\\))" url)
-               (setq ef (substring url (match-beginning 1) (match-end 1))
-                     el (substring url (match-beginning 2) (match-end 2))))
-              ;; If we have the prompt, but no match (as above),
-              ;; perhaps it is already dumped out into the buffer.  In
-              ;; that case, look back through the buffer.
-              )
-            (when ef
-              (setq frame (cons ef (string-to-number el))))))))
-    ;; This if makes sure that the entirety of an error output is brought in
-    ;; so that matlab-shell-mode doesn't try to display a file that only partially
-    ;; exists in the buffer.  Thus, if MATLAB output:
-    ;;  error: /home/me/my/mo/mello.m,10,12
-    ;; All of that is in the buffer, and it goes to mello.m, not just
-    ;; the first half of that file name.
-    ;; The below used to match against the prompt, not \n, but then text that
-    ;; had error: in it for some other reason wouldn't display at all.
-    (if (and matlab-prompt-seen ;; Don't collect during boot
-             (not frame)        ;; don't collect debug stuff
-             (let ((start (string-match gud-matlab-marker-regexp-prefix gud-marker-acc)))
-               (and start
-                    (not (string-match "\n" gud-marker-acc start))
-                    ;;(not (string-match "^K?>>\\|\\?\\?\\?\\s-Error while evaluating" gud-marker-acc start))
-                    )))
-        ;; We could be collecting something.  Wait for a while.
-        nil
-      ;; Finish off this part of the output.  None of our special stuff
-      ;; ends with a \n, so display those as they show up...
-      (while (string-match "^[^\n]*\n" gud-marker-acc)
-        (setq output (concat output (substring gud-marker-acc 0 (match-end 0)))
-              gud-marker-acc (substring gud-marker-acc (match-end 0))))
-
-      (setq output (concat output gud-marker-acc)
-            gud-marker-acc "")
-      ;; Check our output for a prompt, and existence of a frame.
-      ;; If t his is true, throw out the debug arrow stuff.
-      (if (and (string-match "^>> $" output)
-               gud-last-last-frame)
-          (progn
-            (setq overlay-arrow-position nil
-                  gud-last-last-frame nil
-                  gud-overlay-arrow-position nil)
-            (sit-for 0))))
-
-    (when frame
-      (setq gud-last-frame frame))
-    output))
-
-(defun gud-matlab-find-file (f)
-  "Find file F when debugging frames in MATLAB."
-  (save-excursion
-    (let* ((realfname (if (string-match "\\.\\(p\\)$" f)
-                          (progn
-                            (aset f (match-beginning 1) ?m)
-                            f)
-                        f))
-           (buf (find-file-noselect realfname)))
-      (set-buffer buf)
-      (if (fboundp 'gud-make-debug-menu)
-          (gud-make-debug-menu))
-      buf)))
 
 (defun matlab-shell-next-matching-input-from-input (n)
   "Get the Nth next matching input from for the command line."
@@ -4891,18 +4663,6 @@ To reference old errors, put the cursor just after the error text."
   (let ((url (matlab-url-at (point))))
     (if url (matlab-find-other-window-via-url url))))
 
-(defun matlab-shell-dbstop-error ()
-  "Stop on errors."
-  (interactive)
-  (comint-send-string (get-buffer-process (current-buffer))
-                      "dbstop if error\n"))
-
-(defun matlab-shell-dbclear-error ()
-  "Don't stop on errors."
-  (interactive)
-  (comint-send-string (get-buffer-process (current-buffer))
-                      "dbclear if error\n"))
-
 (defun matlab-shell-demos ()
   "MATLAB demos."
   (interactive)
@@ -5240,7 +5000,7 @@ Check `matlab-mode-install-path'" filename))))
              (while (re-search-forward "" nil t)
                (delete-char -2))
              (goto-char (point-max))
-             (if (re-search-backward "^[A-Z_a-z0-9]+ =\n\n?" nil t)
+             (if (re-search-backward "^[A-Z_a-z0-9]+ = *\n\n?" nil t)
                  (progn
                    (setq answer (buffer-substring-no-properties (match-end 0) (- (point-max) 5)))
                    (when (= 0 (cl-count ?\n answer))
@@ -5254,9 +5014,7 @@ Check `matlab-mode-install-path'" filename))))
                                                 (point-max)) "^>> " t))
                                 "\n")))))
       (set-process-buffer process buffer))
-    (if (string= answer "")
-        "(no output)"
-      answer)))
+    answer))
 
 (defun matlab-goto-symbol ()
   (interactive)
@@ -5267,42 +5025,6 @@ Check `matlab-mode-install-path'" filename))))
       (with-no-warnings
         (ring-insert find-tag-marker-ring (point-marker)))
       (matlab-eval (format "open('%s')" sym)))))
-
-;;* debugger
-(defvar matlab-debug-current-file nil)
-
-(defun matlab-debug-goto ()
-  "When in debugger, to to the top of \"dbstack\"."
-  (interactive)
-  (let ((stack (matlab-eval "dbstack")))
-    (when (string-match "In \\(.*\\) (line \\([0-9]+\\))$" stack)
-      (let* ((file (match-string 1 stack))
-             (line (match-string 2 stack))
-             (full-file (matlab-eval (format "which('%s')" file))))
-        (if (file-exists-p full-file)
-            (progn
-              (setq matlab-debug-current-file full-file)
-              (find-file-other-window full-file)
-              (goto-char (point-min))
-              (forward-line (string-to-number line)))
-          (error "MATLAB requested file %s but it does not exist" full-file))))))
-
-(defun matlab-debug-dbstep ()
-  "When in debugger, to to the top of \"dbstack\"."
-  (interactive)
-  (let* ((res (matlab-eval "dbstep"))
-         (line-number (read res)))
-    (with-current-buffer (find-file-noselect matlab-debug-current-file)
-      (goto-char (point-min))
-      (forward-line (1- line-number)))))
-
-(defhydra hydra-matlab-debug (:color pink)
-  "db"
-  ("l" matlab-debug-goto "goto line")
-  ("j" matlab-debug-dbstep "dbstep")
-  ("g" (matlab-eval "dbcont") "dbcont" :exit t)
-  ("Q" (matlab-eval "dbquit") "dbquit" :exit t)
-  ("q" nil "quit"))
 
 (provide 'matlab)
 
