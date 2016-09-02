@@ -194,13 +194,6 @@ amount to use if MAXIMUM is reached."
                   (character :tag "Open List Character")
                   (sexp :tag "Number (max) or cons (max indent)"))))
 
-(defcustom matlab-handle-simulink t
-  "If true, add in a few simulink customizations.
-This variable's state is mostly useful when set at load time when
-simulink font lock keywords can be removed.  This will handle
-additional cases as the need arrises."
-  :type 'boolean)
-
 (defcustom matlab-auto-fill t
   "If true, set variable `auto-fill-function' to our function at startup."
   :type 'boolean)
@@ -731,17 +724,7 @@ ui\\(cont\\(ext\\(\\|menu\\)\\|rol\\)\\|menu\\|\
           '(1 font-lock-reference-face prepend))
     ;; continuation ellipsis.
     '("[^.]\\(\\.\\.\\.+\\)\\([^\n]*\\)" (1 'underline)
-      (2 font-lock-comment-face)))
-   (if matlab-handle-simulink
-       ;; Simulink functions, but only if the user wants it.
-       (list (list (concat "\\<\\(\\([sg]et_param\\|sim\\([gs]et\\)?\\|"
-                           "\\(mld\\|ss\\)[A-Z]\\w+\\)\\|"
-                           "\\(new\\|open\\|close\\|save\\|find\\)_system\\|"
-                           "\\(add\\|delete\\|replace\\)_\\(block\\|line\\)\\|"
-                           "simulink\\|bd\\(root\\|close\\)"
-                           "\\)\\>")
-                   1 matlab-simulink-keyword-face))
-     nil))
+      (2 font-lock-comment-face))))
   "Expressions to highlight in MATLAB mode.")
 
 (defvar matlab-shell-font-lock-keywords
@@ -821,7 +804,6 @@ Variables:
   `matlab-highlight-block-match-flag'
                                 Enable matching block begin/end keywords.
   `matlab-vers-on-startup'      If t, show version on start-up.
-  `matlab-handle-simulink'      If t, enable simulink keyword highlighting.
 
 All Key Bindings:
 \\{matlab-mode-map}"
