@@ -360,14 +360,6 @@ evaluating it."
 (define-abbrev-table 'matlab-mode-abbrev-table ())
 
 ;;* Keybindings
-(defvar matlab-help-map
-  (let ((km (make-sparse-keymap)))
-    (define-key km "f" 'matlab-shell-describe-command)
-    (define-key km "a" 'matlab-shell-apropos)
-    (define-key km "t" 'matlab-shell-topic-browser)
-    km)
-  "The help key map for `matlab-mode' and `matlab-shell-mode'.")
-
 (defvar matlab-insert-map
   (let ((km (make-sparse-keymap)))
     ;; Not really inserts, but auto coding stuff
@@ -390,7 +382,6 @@ evaluating it."
     (define-key km [(meta control return)] 'matlab-shell-run-cell)
     (define-key km [(control c) (control t)] 'matlab-show-line-info)
     (define-key km [(control c) ?.] 'matlab-find-file-on-path)
-    (define-key km [(control h) (control m)] matlab-help-map)
     (define-key km [(control j)] 'matlab-linefeed)
     (define-key km "\M-\r" 'newline)
     (define-key km [(meta \;)] 'matlab-comment)
@@ -3094,11 +3085,7 @@ desired.  Optional argument FAST is not used."
         ]
        ["Customize" (customize-group 'matlab)
         (and (featurep 'custom) (fboundp 'custom-declare-variable))
-        ])
-      "----"
-      ["Describe Command" matlab-shell-describe-command (matlab-shell-active-p)]
-      ["Command Apropos" matlab-shell-apropos (matlab-shell-active-p)]
-      ["Topic Browser" matlab-shell-topic-browser (matlab-shell-active-p)]))
+        ])))
   (easy-menu-add matlab-mode-menu matlab-mode-map))
 
 ;;* MATLAB shell
@@ -3176,7 +3163,6 @@ This name will have *'s surrounding it.")
     (substitute-key-definition
      'next-error 'matlab-shell-last-error
      map global-map)
-    (define-key map (kbd "C-h C-m") matlab-help-map)
     (define-key map (kbd "C-c .") 'matlab-find-file-on-path)
     (define-key map (kbd "TAB") 'matlab-shell-tab)
     (define-key map (kbd "C-i") 'matlab-shell-tab)
@@ -3324,10 +3310,6 @@ in the offending M file.
 
 > From an M file, or from Shell mode:
 \\<matlab-mode-map>
-\\[matlab-shell-describe-command] - Show online documentation for a command \
-in a popup buffer.
-\\[matlab-shell-apropos] - Show output from LOOKFOR command in a popup buffer.
-\\[matlab-shell-topic-browser] - Topic browser using HELP.
 
 > Keymap:
 \\{matlab-mode-map}"
@@ -3382,10 +3364,6 @@ in a popup buffer.
     "MATLAB shell menu"
     '("MATLAB"
       ["Goto last error" matlab-shell-last-error t]
-      "----"
-      ["Describe Command" matlab-shell-describe-command t]
-      ["Lookfor Command" matlab-shell-apropos t]
-      ["Topic Browser" matlab-shell-topic-browser t]
       "----"
       ["Demos" matlab-shell-demos t]
       ["Close Current Figure" matlab-shell-close-current-figure t]
@@ -3952,44 +3930,6 @@ Snatched and hacked from dired-x.el"
             start (match-end 0)))
     count))
 
-(defun matlab-output-to-temp-buffer (buffer output)
-  "Print output to temp buffer, or a message if empty string.
-BUFFER is the buffer to output to, and OUTPUT is the text to insert."
-  (let ((lines-found (matlab-non-empty-lines-in-string output)))
-    (cond ((= lines-found 0)
-           (message "(MATLAB command completed with no output)"))
-          ((= lines-found 1)
-           (string-match "^.+$" output)
-           (message (substring output (match-beginning 0) (match-end 0))))
-          (t (with-output-to-temp-buffer buffer (princ output))
-             (save-excursion
-               (set-buffer buffer)
-               (matlab-shell-help-mode))))))
-
-(defun matlab-shell-describe-command (command)
-  "Describe COMMAND textually by fetching it's doc from the MATLAB shell.
-This uses the lookfor command to find viable commands.
-This command requires an active MATLAB shell."
-  (interactive
-   (let ((fn (matlab-function-called-at-point))
-         val)
-     (setq val (read-string (if fn
-                                (format "Describe function (default %s): " fn)
-                              "Describe function: ")))
-     (if (string= val "") (list fn) (list val))))
-  (let ((doc (matlab-shell-collect-command-output (concat "help " command))))
-    (matlab-output-to-temp-buffer "*MATLAB Help*" doc)))
-
-(defun matlab-shell-apropos (matlabregex)
-  "Look for any active commands in MATLAB matching MATLABREGEX.
-This uses the lookfor command to find viable commands."
-  (interactive (list (read-from-minibuffer
-                      "MATLAB command subexpression: "
-                      (cons (matlab-read-word-at-point) 0))))
-  (let ((ap (matlab-shell-collect-command-output
-             (concat "lookfor " matlabregex))))
-    (matlab-output-to-temp-buffer "*MATLAB Apropos*" ap)))
-
 (defun matlab-on-prompt-p ()
   "Return t if we MATLAB can accept input."
   (save-excursion
@@ -4193,182 +4133,6 @@ To reference old errors, put the cursor just after the error text."
   (interactive)
   (comint-send-string (get-buffer-process (current-buffer)) "exit\n")
   (kill-buffer nil))
-
-
-;;* matlab-shell based Topic Browser and Help
-(defcustom matlab-shell-topic-mode-hook nil
-  "MATLAB shell topic hook."
-  :type 'hook)
-
-(defvar matlab-shell-topic-current-topic nil
-  "The currently viewed topic in a MATLAB shell topic buffer.")
-
-(defun matlab-shell-topic-browser ()
-  "Create a topic browser by querying an active MATLAB shell using HELP.
-Maintain state in our topic browser buffer."
-  (interactive)
-  ;; Reset topic browser if it doesn't exist.
-  (if (not (get-buffer "*MATLAB Topic*"))
-      (setq matlab-shell-topic-current-topic nil))
-  (let ((b (get-buffer-create "*MATLAB Topic*")))
-    (switch-to-buffer b)
-    (if (string= matlab-shell-topic-current-topic "")
-        nil
-      (matlab-shell-topic-mode)
-      (matlab-shell-topic-browser-create-contents ""))))
-
-(defvar matlab-shell-topic-mouse-face-keywords
-  '(
-    ;; These are subtopic fields...
-    ("^\\(\\w+/\\w+\\)[ \t]+-" 1 font-lock-reference-face)
-    ;; These are functions...
-    ("^[ \t]+\\(\\w+\\)[ \t]+-" 1 font-lock-function-name-face)
-    ;; Here is a See Also line...
-    ("[ \t]+See also "
-     ("\\(\\w+\\)\\([,.]\\| and\\|$\\) *" nil nil (1 font-lock-reference-face))))
-  "These are keywords we also want to put mouse-faces on.")
-
-(defvar matlab-shell-topic-font-lock-keywords
-  (append matlab-shell-topic-mouse-face-keywords
-          '(("^[^:\n]+:$" 0 font-lock-keyword-face)
-            ;; These are subheadings...
-            ("^[ \t]+\\([^.\n]+[a-zA-Z.]\\)$" 1 'underline)))
-  "Keywords useful for highlighting a MATLAB TOPIC buffer.")
-
-(defvar matlab-shell-help-font-lock-keywords
-  (append matlab-shell-topic-mouse-face-keywords
-          '(
-            ;; Function call examples
-            ("[ \t]\\([A-Z]+\\)\\s-*=\\s-*\\([A-Z]+[0-9]*\\)("
-             (1 font-lock-variable-name-face)
-             (2 font-lock-function-name-face))
-            ("[ \t]\\([A-Z]+[0-9]*\\)("
-             (1 font-lock-function-name-face))
-            ;; Parameters: Not very accurate, unfortunately.
-            ("[ \t]\\([A-Z]+[0-9]*\\)("
-             ("'?\\(\\w+\\)'?\\([,)]\\) *" nil nil
-              (1 font-lock-variable-name-face)))
-            ;; Reference uppercase words
-            ("\\<\\([A-Z]+[0-9]*\\)\\>" 1 font-lock-reference-face)))
-  "Keywords for regular help buffers.")
-
-(define-derived-mode matlab-shell-help-mode view-major-mode "M-Help"
-  "Major mode for viewing MATLAB help text.
-Entry to this mode runs the normal hook `matlab-shell-help-mode-hook'.
-
-Commands:
-\\{matlab-shell-help-mode-map}"
-  (make-local-variable 'font-lock-defaults)
-  (setq font-lock-defaults '((matlab-shell-help-font-lock-keywords)
-                             t nil ((?_ . "w"))))
-  ;; This makes sure that we really enter font lock since
-  ;; kill-all-local-variables is not used by old view-mode.
-  (and (boundp 'global-font-lock-mode) global-font-lock-mode
-       (not font-lock-mode) (font-lock-mode 1))
-  (easy-menu-add matlab-shell-help-mode-menu matlab-shell-help-mode-map)
-  (matlab-shell-topic-mouse-highlight-subtopics))
-
-(define-key matlab-shell-help-mode-map [return] 'matlab-shell-topic-choose)
-(define-key matlab-shell-help-mode-map "t" 'matlab-shell-topic-browser)
-(define-key matlab-shell-help-mode-map "q" 'bury-buffer)
-(define-key matlab-shell-help-mode-map [(control h) (control m)] matlab-help-map)
-(define-key matlab-shell-help-mode-map [mouse-2] 'matlab-shell-topic-click)
-
-(easy-menu-define matlab-shell-help-mode-menu matlab-shell-help-mode-map
-  "MATLAB shell topic menu"
-  '("MATLAB Help"
-    ["Describe This Command" matlab-shell-topic-choose t]
-    "----"
-    ["Describe Command" matlab-shell-describe-command t]
-    ["Command Apropos" matlab-shell-apropos t]
-    ["Topic Browser" matlab-shell-topic-browser t]
-    "----"
-    ["Exit" bury-buffer t]))
-
-(define-derived-mode matlab-shell-topic-mode matlab-shell-help-mode "M-Topic"
-  "Major mode for browsing MATLAB HELP topics.
-The output of the MATLAB command HELP with no parameters creates a listing
-of known help topics at a given installation.  This mode parses that listing
-and allows selecting a topic and getting more help for it.
-Entry to this mode runs the normal hook `matlab-shell-topic-mode-hook'.
-
-Commands:
-\\{matlab-shell-topic-mode-map}"
-  (setq font-lock-defaults '((matlab-shell-topic-font-lock-keywords)
-                             t t ((?_ . "w"))))
-  (easy-menu-add matlab-shell-topic-mode-menu matlab-shell-topic-mode-map))
-
-(easy-menu-define matlab-shell-topic-mode-menu matlab-shell-topic-mode-map
-  "MATLAB shell topic menu"
-  '("MATLAB Topic"
-    ["Select This Topic" matlab-shell-topic-choose t]
-    ["Top Level Topics" matlab-shell-topic-browser t]
-    "----"
-    ["Exit" bury-buffer t]))
-
-(defun matlab-shell-topic-browser-create-contents (subtopic)
-  "Fill in a topic browser with the output from SUBTOPIC."
-  (toggle-read-only -1)
-  (erase-buffer)
-  (insert (matlab-shell-collect-command-output (concat "help " subtopic)))
-  (goto-char (point-min))
-  (forward-line 1)
-  (delete-region (point-min) (point))
-  (setq matlab-shell-topic-current-topic subtopic)
-  (if (not (string-match "XEmacs" emacs-version))
-      (matlab-shell-topic-mouse-highlight-subtopics))
-  (toggle-read-only 1))
-
-(defun matlab-shell-topic-click (e)
-  "Click on an item in a MATLAB topic buffer we want more information on.
-Must be bound to event E."
-  (interactive "e")
-  (mouse-set-point e)
-  (matlab-shell-topic-choose))
-
-(defun matlab-shell-topic-choose ()
-  "Choose the topic to expand on that is under the cursor.
-This can fill the topic buffer with new information.  If the topic is a
-command, use `matlab-shell-describe-command' instead of changing the topic
-buffer."
-  (interactive)
-  (let ((topic nil) (fun nil) (p (point)))
-    (save-excursion
-      (beginning-of-line)
-      (if (looking-at "^\\w+/\\(\\w+\\)[ \t]+-")
-          (setq topic (match-string 1))
-        (if (looking-at "^[ \t]+\\(\\(\\w\\|_\\)+\\)[ \t]+-")
-            (setq fun (match-string 1))
-          (if (and (not (looking-at "^[ \t]+See also"))
-                   (not (save-excursion (forward-char -2)
-                                        (looking-at ",$"))))
-              (error "You did not click on a subtopic, function or reference")
-            (goto-char p)
-            (forward-word -1)
-            (if (not (looking-at "\\(\\(\\w\\|_\\)+\\)\\([.,]\\| and\\|\n\\)"))
-                (error "You must click on a reference")
-              (setq topic (match-string 1)))))))
-    (message "Opening item %s..." (or topic fun))
-    (if topic
-        (matlab-shell-topic-browser-create-contents (downcase topic))
-      (matlab-shell-describe-command fun))))
-
-(defun matlab-shell-topic-mouse-highlight-subtopics ()
-  "Put a `mouse-face' on all clickable targets in this buffer."
-  (save-excursion
-    (let ((el matlab-shell-topic-mouse-face-keywords))
-      (while el
-        (goto-char (point-min))
-        (while (re-search-forward (car (car el)) nil t)
-          (let ((cd (car (cdr (car el)))))
-            (if (numberp cd)
-                (put-text-property (match-beginning cd) (match-end cd)
-                                   'mouse-face 'highlight)
-              (while (re-search-forward (car cd) nil t)
-                (put-text-property (match-beginning (car (nth 3 cd)))
-                                   (match-end (car (nth 3 cd)))
-                                   'mouse-face 'highlight)))))
-        (setq el (cdr el))))))
 
 ;;* M File path stuff
 (defun matlab-mode-determine-mfile-path ()
