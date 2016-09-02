@@ -848,34 +848,20 @@ All Key Bindings:
   (setq indent-tabs-mode nil)
   (setq-local beginning-of-defun-function 'matlab-beginning-of-defun)
   (setq-local end-of-defun-function 'matlab-end-of-defun)
-  (make-local-variable 'indent-line-function)
-  (setq indent-line-function 'matlab-indent-line)
-  (make-local-variable 'paragraph-start)
-  (setq paragraph-start (concat "^$\\|" page-delimiter))
-  (make-local-variable 'paragraph-separate)
-  (setq paragraph-separate paragraph-start)
-  (make-local-variable 'paragraph-ignore-fill-prefix)
-  (setq paragraph-ignore-fill-prefix t)
-  (make-local-variable 'comment-start-skip)
-  (setq comment-start-skip "%\\s-+")
-  (make-local-variable 'comment-start)
-  (setq comment-start "%")
-  (make-local-variable 'page-delimiter)
-  (setq page-delimiter "^\\(\f\\|%%\\(\\s-\\|\n\\)\\)")
-  (make-local-variable 'comment-column)
-  (setq comment-column matlab-comment-column)
-  (make-local-variable 'comment-indent-function)
-  (setq comment-indent-function 'matlab-comment-indent)
-  (make-local-variable 'add-log-current-defun-function)
-  (setq add-log-current-defun-function 'matlab-current-defun)
-  (make-local-variable 'fill-column)
-  (setq fill-column default-fill-column)
+  (setq-local indent-line-function 'matlab-indent-line)
+  (setq-local paragraph-start (concat "^$\\|" page-delimiter))
+  (setq-local paragraph-separate paragraph-start)
+  (setq-local paragraph-ignore-fill-prefix t)
+  (setq-local comment-start-skip "%\\s-+")
+  (setq-local comment-start "%")
+  (setq-local page-delimiter "^\\(\f\\|%%\\(\\s-\\|\n\\)\\)")
+  (setq-local comment-column matlab-comment-column)
+  (setq-local comment-indent-function 'matlab-comment-indent)
+  (setq-local add-log-current-defun-function 'matlab-current-defun)
+  (setq-local fill-column default-fill-column)
   (make-local-variable 'auto-fill-function)
   (if matlab-auto-fill (setq auto-fill-function 'matlab-auto-fill))
-  ;; Emacs 20 supports this variable.  This lets users turn auto-fill
-  ;; on and off and still get the right fill function.
-  (make-local-variable 'normal-auto-fill-function)
-  (setq normal-auto-fill-function 'matlab-auto-fill)
+  (setq-local normal-auto-fill-function 'matlab-auto-fill)
   (make-local-variable 'fill-prefix)
   ;; Save hook for verifying src.  This lets us change the name of
   ;; the function in `write-file' and have the change be saved.
@@ -884,15 +870,15 @@ All Key Bindings:
   (add-hook 'write-contents-hooks 'matlab-mode-verify-fix-file-fn)
   ;; give each file it's own parameter history
   (make-local-variable 'matlab-shell-save-and-go-history)
-  (make-local-variable 'font-lock-defaults)
-  (setq font-lock-defaults '((matlab-font-lock-keywords
-                              matlab-gaudy-font-lock-keywords
-                              matlab-really-gaudy-font-lock-keywords)
-                             t ; do not do string/comment highlighting
-                             nil ; keywords are case sensitive.
-                             ;; This puts _ as a word constituent,
-                             ;; simplifying our keywords significantly
-                             ((?_ . "w"))))
+  (setq-local font-lock-defaults
+              '((matlab-font-lock-keywords
+                 matlab-gaudy-font-lock-keywords
+                 matlab-really-gaudy-font-lock-keywords)
+                t            ; do not do string/comment highlighting
+                nil          ; keywords are case sensitive.
+                ;; This puts _ as a word constituent,
+                ;; simplifying our keywords significantly
+                ((?_ . "w"))))
   (matlab-enable-block-highlighting 1)
   (if window-system (matlab-frame-init))
 
@@ -938,8 +924,6 @@ All Key Bindings:
          (setq matlab-indent-function-body 'MathWorks-Standard))))
 
     (t))
-
-
   (if (or (featurep 'mlint)
           matlab-show-mlint-warnings
           matlab-highlight-cross-function-variables)
