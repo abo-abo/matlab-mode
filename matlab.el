@@ -3241,6 +3241,8 @@ Try C-h f matlab-shell RET"))
     ;; Comint and GUD both try to set the mode.  Now reset it to
     ;; matlab mode.
     (matlab-shell-mode)
+    (set-process-filter (get-buffer-process (current-buffer)) 'matlab-eval-filter)
+    (set-process-sentinel (get-buffer-process (current-buffer)) 'matlab-eval-sentinel)
     (matlab-shell-active-p)))
 
 (defun matlab-eval-sentinel (process event)
