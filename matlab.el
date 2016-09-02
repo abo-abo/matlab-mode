@@ -362,7 +362,6 @@ evaluating it."
 ;;* Keybindings
 (defvar matlab-help-map
   (let ((km (make-sparse-keymap)))
-    (define-key km "r" 'matlab-shell-run-command)
     (define-key km "f" 'matlab-shell-describe-command)
     (define-key km "a" 'matlab-shell-apropos)
     (define-key km "v" 'matlab-shell-describe-variable)
@@ -3098,7 +3097,6 @@ desired.  Optional argument FAST is not used."
         (and (featurep 'custom) (fboundp 'custom-declare-variable))
         ])
       "----"
-      ["Run M Command" matlab-shell-run-command (matlab-shell-active-p)]
       ["Describe Command" matlab-shell-describe-command (matlab-shell-active-p)]
       ["Describe Variable" matlab-shell-describe-variable (matlab-shell-active-p)]
       ["Command Apropos" matlab-shell-apropos (matlab-shell-active-p)]
@@ -3238,11 +3236,9 @@ Try C-h f matlab-shell RET"))
               nil matlab-shell-command-switches)))
     (setq shell-dirtrackp t)
     (comint-mode)
-    ;; Comint and GUD both try to set the mode.  Now reset it to
-    ;; matlab mode.
-    (matlab-shell-mode)
     (set-process-filter (get-buffer-process (current-buffer)) 'matlab-eval-filter)
     (set-process-sentinel (get-buffer-process (current-buffer)) 'matlab-eval-sentinel)
+    (matlab-shell-mode)
     (matlab-shell-active-p)))
 
 (defun matlab-eval-sentinel (process event)
@@ -3330,7 +3326,6 @@ in the offending M file.
 
 > From an M file, or from Shell mode:
 \\<matlab-mode-map>
-\\[matlab-shell-run-command] - Run COMMAND and show result in a popup buffer.
 \\[matlab-shell-describe-variable] - Show variable contents in a popup buffer.
 \\[matlab-shell-describe-command] - Show online documentation for a command \
 in a popup buffer.
@@ -3391,7 +3386,6 @@ in a popup buffer.
     '("MATLAB"
       ["Goto last error" matlab-shell-last-error t]
       "----"
-      ["Run Command" matlab-shell-run-command t]
       ["Describe Variable" matlab-shell-describe-variable t]
       ["Describe Command" matlab-shell-describe-command t]
       ["Lookfor Command" matlab-shell-apropos t]
@@ -3975,15 +3969,6 @@ BUFFER is the buffer to output to, and OUTPUT is the text to insert."
              (save-excursion
                (set-buffer buffer)
                (matlab-shell-help-mode))))))
-
-(defun matlab-shell-run-command (command)
-  "Run COMMAND and display result in a buffer.
-This command requires an active MATLAB shell."
-  (interactive (list (read-from-minibuffer
-                      "MATLAB command line: "
-                      (cons (matlab-read-line-at-point) 0))))
-  (let ((doc (matlab-shell-collect-command-output command)))
-    (matlab-output-to-temp-buffer "*MATLAB Help*" doc)))
 
 (defun matlab-shell-describe-variable (variable)
   "Get the contents of VARIABLE and display them in a buffer.
