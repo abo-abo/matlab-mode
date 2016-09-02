@@ -364,7 +364,6 @@ evaluating it."
   (let ((km (make-sparse-keymap)))
     (define-key km "f" 'matlab-shell-describe-command)
     (define-key km "a" 'matlab-shell-apropos)
-    (define-key km "v" 'matlab-shell-describe-variable)
     (define-key km "t" 'matlab-shell-topic-browser)
     km)
   "The help key map for `matlab-mode' and `matlab-shell-mode'.")
@@ -3098,7 +3097,6 @@ desired.  Optional argument FAST is not used."
         ])
       "----"
       ["Describe Command" matlab-shell-describe-command (matlab-shell-active-p)]
-      ["Describe Variable" matlab-shell-describe-variable (matlab-shell-active-p)]
       ["Command Apropos" matlab-shell-apropos (matlab-shell-active-p)]
       ["Topic Browser" matlab-shell-topic-browser (matlab-shell-active-p)]))
   (easy-menu-add matlab-mode-menu matlab-mode-map))
@@ -3326,7 +3324,6 @@ in the offending M file.
 
 > From an M file, or from Shell mode:
 \\<matlab-mode-map>
-\\[matlab-shell-describe-variable] - Show variable contents in a popup buffer.
 \\[matlab-shell-describe-command] - Show online documentation for a command \
 in a popup buffer.
 \\[matlab-shell-apropos] - Show output from LOOKFOR command in a popup buffer.
@@ -3386,7 +3383,6 @@ in a popup buffer.
     '("MATLAB"
       ["Goto last error" matlab-shell-last-error t]
       "----"
-      ["Describe Variable" matlab-shell-describe-variable t]
       ["Describe Command" matlab-shell-describe-command t]
       ["Lookfor Command" matlab-shell-apropos t]
       ["Topic Browser" matlab-shell-topic-browser t]
@@ -3970,16 +3966,6 @@ BUFFER is the buffer to output to, and OUTPUT is the text to insert."
                (set-buffer buffer)
                (matlab-shell-help-mode))))))
 
-(defun matlab-shell-describe-variable (variable)
-  "Get the contents of VARIABLE and display them in a buffer.
-This uses the WHOS (MATLAB 5) command to find viable commands.
-This command requires an active MATLAB shell."
-  (interactive (list (read-from-minibuffer
-                      "MATLAB variable: "
-                      (cons (matlab-read-word-at-point) 0))))
-  (let ((doc (matlab-shell-collect-command-output (concat "whos " variable))))
-    (matlab-output-to-temp-buffer "*MATLAB Help*" doc)))
-
 (defun matlab-shell-describe-command (command)
   "Describe COMMAND textually by fetching it's doc from the MATLAB shell.
 This uses the lookfor command to find viable commands.
@@ -4294,7 +4280,6 @@ Commands:
     ["Describe This Command" matlab-shell-topic-choose t]
     "----"
     ["Describe Command" matlab-shell-describe-command t]
-    ["Describe Variable" matlab-shell-describe-variable t]
     ["Command Apropos" matlab-shell-apropos t]
     ["Topic Browser" matlab-shell-topic-browser t]
     "----"
