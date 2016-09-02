@@ -776,12 +776,6 @@ ui\\(cont\\(ext\\(\\|menu\\)\\|rol\\)\\|menu\\|\
   "Additional keywords used by MATLAB when reporting errors in interactive\
 mode.")
 
-;; Imenu support.
-(defvar matlab-imenu-generic-expression
-  '((nil "^\\s-*function\\>[ \t\n.]*\\(\\(\\[[^]]*\\]\\|\\sw+\\)[ \t\n.]*\
-< =\[ \t\n.]*\\)?\\([a-zA-Z0-9_]+\\)" 3))
-  "Expressions which find function headings in MATLAB M files.")
-
 (defun matlab-completion-at-point ()
   (if (looking-back "[\t\n ]\\([a-z_.()A-Z0-9]+\\)")
       (let* ((bnd-expr (cons (match-beginning 1) (match-end 1)))
@@ -883,8 +877,6 @@ All Key Bindings:
   (make-local-variable 'normal-auto-fill-function)
   (setq normal-auto-fill-function 'matlab-auto-fill)
   (make-local-variable 'fill-prefix)
-  (make-local-variable 'imenu-generic-expression)
-  (setq imenu-generic-expression matlab-imenu-generic-expression)
   ;; Save hook for verifying src.  This lets us change the name of
   ;; the function in `write-file' and have the change be saved.
   ;; It also lets us fix mistakes before a `save-and-go'.
