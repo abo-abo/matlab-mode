@@ -405,7 +405,6 @@ evaluating it."
 
 (defvar matlab-insert-map
   (let ((km (make-sparse-keymap)))
-    (define-key km "'" 'matlab-stringify-region)
     ;; Not really inserts, but auto coding stuff
     (define-key km "\C-s" 'matlab-ispell-strings)
     (define-key km "\C-c" 'matlab-ispell-comments)
@@ -816,10 +815,6 @@ Convenient navigation commands are:
  \\[matlab-end-of-defun] - Move do the end of a function.
  \\[matlab-forward-sexp] - Move forward over a syntactic block of code.
  \\[matlab-backward-sexp] - Move backwards over a syntactic block of code.
-
-Convenient template insertion commands:
- \\[matlab-stringify-region] - Convert plaintext in region to a string \
-with correctly quoted chars.
 
 Variables:
   `matlab-indent-level'         Level to indent blocks.
@@ -2889,26 +2884,6 @@ If the list is empty, then searches continue backwards through the code."
         (setq syms (cdr syms)))
       (matlab-uniquafy-list (nreverse fl)))))
 
-(defun matlab-stringify-region (begin end)
-  "Put MATLAB 's around region, and quote all quotes in the string.
-Stringification allows you to type in normal MATLAB code, mark it, and
-then turn it into a MATLAB string that will output exactly what's in
-the region.  BEGIN and END mark the region to be stringified."
-  (interactive "r")
-  (save-excursion
-    (goto-char begin)
-    (if (re-search-forward "\n" end t)
-        (error
-         "You may only stringify regions that encompass less than one line"))
-    (let ((m (make-marker)))
-      (move-marker m end)
-      (goto-char begin)
-      (insert "'")
-      (while (re-search-forward "'" m t)
-        (insert "'"))
-      (goto-char m)
-      (insert "'"))))
-
 (defun matlab-ispell-strings-region (begin end)
   "Spell check valid strings in region with Ispell.
 Argument BEGIN and END mark the region boundary."
@@ -3365,8 +3340,7 @@ desired.  Optional argument FAST is not used."
         (save-excursion (matlab-comment-on-line))]
        ["Indent Synactic Block" matlab-indent-sexp])
       ("Insert"
-       ["Comment" matlab-comment t]
-       ["Stringify Region" matlab-stringify-region t])
+       ["Comment" matlab-comment t])
       ("Customize"
                                         ;      ["Auto Fill Counts Elipsis"
                                         ;       (lambda () (setq matlab-fill-count-ellipsis-flag
