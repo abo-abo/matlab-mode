@@ -2830,28 +2830,6 @@ Optional ARG means to only check the current comment."
       (while (and (matlab-font-lock-comment-match end)
                   (ispell-region (match-beginning 1) (match-end 1)))))))
 
-(defun matlab-generate-latex ()
-  "Convert a MATLAB M file into a Latex document for printing.
-Author: Uwe Brauer oub@eucmos.sim.ucm.es
-Created: 14 Feb 2002"
-  (interactive "*")
-  (save-restriction
-    (save-excursion
-      (goto-char (point-min))
-      (insert "\\documentclass[12pt]{report}\n
-\\usepackage{listings}
-\\lstloadlanguages{Matlab}
-\\lstset{language=Matlab,keywordstyle=\\bfseries,labelstep=1,escapechar=\\#}
-\\begin{document}
-\\begin{lstlisting}{}")
-      (newline)
-      (goto-char (point-max))
-      (insert "\n\\end{lstlisting}\n\\end{document}")
-      (widen)))
-  (font-lock-mode nil)
-  (LaTeX-mode)
-  (font-lock-mode nil))
-
 ;;* M Block Folding with hideshow
 (defun matlab-hideshow-forward-sexp-func (arg)
   "Move forward one sexp for hideshow.
