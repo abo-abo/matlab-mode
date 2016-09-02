@@ -2830,19 +2830,6 @@ Optional ARG means to only check the current comment."
       (while (and (matlab-font-lock-comment-match end)
                   (ispell-region (match-beginning 1) (match-end 1)))))))
 
-;;* M Block Folding with hideshow
-(defun matlab-hideshow-forward-sexp-func (arg)
-  "Move forward one sexp for hideshow.
-Argument ARG specifies the number of blocks to move forward."
-  (beginning-of-line)
-  (matlab-forward-sexp arg))
-
-(defun matlab-hideshow-adjust-beg-func (arg)
-  "Adjust the beginning of a hideshow block.
-Argument ARG to make it happy."
-  (end-of-line)
-  (point))
-
 ;;* M Code verification & Auto-fix
 (defun matlab-mode-verify-fix-file-fn ()
   "Verify the current buffer from `write-contents-hooks'."
