@@ -296,16 +296,6 @@ This will only work if `matlab-highlight-block-match-flag' is non-nil."
   "List of functions to call on entry to MATLAB mode."
   :type 'hook)
 
-(defcustom matlab-show-mlint-warnings nil
-  "If non-nil, show mlint warnings."
-  :type 'boolean)
-(make-variable-buffer-local 'matlab-show-mlint-warnings)
-
-(defcustom matlab-highlight-cross-function-variables nil
-  "If non-nil, highlight cross-function variables."
-  :type 'boolean)
-(make-variable-buffer-local 'matlab-highlight-cross-function-variables)
-
 (defcustom matlab-return-add-semicolon nil
   "If non nil, check to see a semicolon is needed when RET is pressed."
   :type 'boolean)
@@ -924,20 +914,6 @@ All Key Bindings:
          (setq matlab-indent-function-body 'MathWorks-Standard))))
 
     (t))
-  (if (or (featurep 'mlint)
-          matlab-show-mlint-warnings
-          matlab-highlight-cross-function-variables)
-      ;; Some users may not feel like getting all the extra stuff
-      ;; needed for mlint working.  Do this only if we can get
-      ;; mlint loaded ok.
-      (condition-case nil
-          (mlint-minor-mode
-           (if (or matlab-show-mlint-warnings matlab-highlight-cross-function-variables)
-               1
-             0))
-        ;; If there is an error loading the stuff, don't
-        ;; continue.
-        (error nil)))
   (save-excursion
     (goto-char (point-min))
     (run-hooks 'matlab-mode-hook))
@@ -3062,38 +3038,6 @@ If optional FAST is non-nil, do not perform usually lengthy checks."
   (if (interactive-p)
       (message "Done.")))
 
-(defun matlab-toggle-show-mlint-warnings ()
-  "Toggle `matlab-show-mlint-warnings'."
-  (interactive)
-  (setq matlab-show-mlint-warnings (not matlab-show-mlint-warnings))
-  (if matlab-highlight-cross-function-variables
-      (if matlab-show-mlint-warnings
-          (mlint-buffer)        ; became true, recompute mlint info
-        (mlint-clear-warnings))) ; became false, just remove hilighting
-  ;; change mlint mode altogether
-  (mlint-minor-mode
-   (if (or matlab-highlight-cross-function-variables
-           matlab-show-mlint-warnings)
-       1
-     -1)))
-
-(defun matlab-toggle-highlight-cross-function-variables ()
-  "Toggle `matlab-highlight-cross-function-variables'."
-  (interactive)
-  (setq matlab-highlight-cross-function-variables
-        (not matlab-highlight-cross-function-variables))
-  (if matlab-show-mlint-warnings
-      (if matlab-highlight-cross-function-variables
-          ;; became true, recompute mlint info
-          (mlint-buffer)
-        ;; became false, just remove hilighting ...
-        (mlint-clear-cross-function-variable-highlighting)))
-  (mlint-minor-mode
-   (if (or matlab-highlight-cross-function-variables
-           matlab-show-mlint-warnings)
-       1
-     -1)))
-
 (defun matlab-mode-vf-functionname (&optional fast)
   "Verify/Fix the function name of this file.
 Optional argument FAST is ignored."
@@ -3291,10 +3235,6 @@ desired.  Optional argument FAST is not used."
       ["Version" matlab-show-version t]
       "----"
       ["Find M file" matlab-find-file-on-path t]
-      ["Show M-Lint Warnings" matlab-toggle-show-mlint-warnings
-       :active (and (locate-library "mlint") (fboundp 'mlint-minor-mode))
-       :style toggle :selected matlab-show-mlint-warnings
-       ]
       ("Auto Fix"
        ["Verify/Fix source" matlab-mode-verify-fix-file t]
        ["Spell check strings" matlab-ispell-strings t]
@@ -3342,11 +3282,6 @@ desired.  Optional argument FAST is not used."
         (matlab-enable-block-highlighting)
         :style toggle :selected (member 'matlab-start-block-highlight-timer
                                         post-command-hook)]
-       ["Highlight Cross-Function Variables"
-        matlab-toggle-highlight-cross-function-variables
-        :active (locate-library "mlint")
-        :style toggle :selected matlab-highlight-cross-function-variables
-        ]
        ["Add Needed Semicolon on RET"
         (setq matlab-return-add-semicolon (not matlab-return-add-semicolon))
         :style toggle :selected matlab-return-add-semicolon
