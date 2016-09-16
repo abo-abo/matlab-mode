@@ -723,7 +723,7 @@ ui\\(cont\\(ext\\(\\|menu\\)\\|rol\\)\\|menu\\|\
 mode.")
 
 (defun matlab-completion-at-point ()
-  (if (looking-back "[\t\n ]\\([a-z_.()A-Z0-9]+\\)")
+  (if (looking-back "[\t\n =,]\\([a-z_.()A-Z0-9]+\\)")
       (let* ((bnd-expr (cons (match-beginning 1) (match-end 1)))
              (bnd-last (bounds-of-thing-at-point 'symbol))
              (expr (buffer-substring-no-properties (car bnd-expr) (cdr bnd-expr)))
