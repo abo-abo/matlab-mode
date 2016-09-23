@@ -3300,6 +3300,9 @@ Argument STR is the string to examine for version information."
     (remove-hook 'comint-output-filter-functions
                  'matlab-shell-version-scrape)))
 
+(defvar matlab-middleware-loaded-p nil
+  "When non-nil, \"matlab-mode/toolbox\" was already added to the path.")
+
 (defun matlab-shell-mode ()
   "Run MATLAB as a subprocess in an Emacs buffer.
 
@@ -3385,8 +3388,9 @@ in the offending M file.
       ["Exit" matlab-shell-exit t]))
   (easy-menu-add matlab-shell-menu matlab-shell-mode-map)
   (run-hooks 'matlab-shell-mode-hook)
-  ;; ensure emacsdocomplete.m is on path
-  (matlab-addpath (expand-file-name "toolbox" matlab-mode-root))
+  ;; Don't try to modify path yet, since the eval is sync and MATLAB
+  ;; takes a long time to boot.
+  (setq matlab-middleware-loaded-p nil)
   (matlab-show-version))
 
 (defvar matlab-shell-html-map
@@ -3568,12 +3572,18 @@ Optional argument ARG describes the number of chars to delete."
 (defvar matlab-mode-root (file-name-directory (or load-file-name
                                                   default-directory)))
 
+(defun matlab-emacsdocomplete (str)
+  (unless matlab-middleware-loaded-p
+    ;; ensure emacsdocomplete.m is on path
+    (matlab-addpath (expand-file-name "toolbox" matlab-mode-root))
+    (setq matlab-middleware-loaded-p t))
+  (matlab-eval (concat "emacsdocomplete('" str "')")))
+
 (defun matlab-shell-completion-list (str)
   "Get a list of completions from MATLAB.
 STR is a substring to complete."
-  (let* ((cmd (concat "emacsdocomplete('" str "')"))
-         (output (matlab-eval cmd))
-         completions)
+  (let ((output (matlab-emacsdocomplete str))
+        completions)
     (if (null (string-match "^java.lang.String\\[\\]:\n" output))
         (error "Could not match java.lang.String")
       (setq output (substring output (match-end 0)))
