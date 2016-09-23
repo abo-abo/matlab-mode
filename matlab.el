@@ -723,11 +723,21 @@ ui\\(cont\\(ext\\(\\|menu\\)\\|rol\\)\\|menu\\|\
 mode.")
 
 (defun matlab-completion-at-point ()
-  (if (looking-back "[\t\n =,]\\([a-z_.()A-Z0-9]+\\)")
+  (if (looking-back "\\(?:^\\|[\t\n =,]\\)\\([a-z_.()A-Z0-9]+\\)"
+                    (line-beginning-position))
       (let* ((bnd-expr (cons (match-beginning 1) (match-end 1)))
              (bnd-last (bounds-of-thing-at-point 'symbol))
-             (expr (buffer-substring-no-properties (car bnd-expr) (cdr bnd-expr)))
+             (expr (buffer-substring-no-properties
+                    (car bnd-expr)
+                    (if bnd-last
+                        (car bnd-last)
+                      (cdr bnd-expr))))
              (res (matlab-shell-completion-list expr)))
+        (when bnd-last
+          (let ((re (concat "^" (buffer-substring-no-properties
+                                 (car bnd-last)
+                                 (cdr bnd-last)))))
+            (setq res (cl-remove-if-not (lambda (s) (string-match re s)) res))))
         (list
          (if bnd-last (car bnd-last) (point))
          (if bnd-last (cdr bnd-last) (point))
