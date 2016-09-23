@@ -729,9 +729,9 @@ mode.")
              (bnd-last (bounds-of-thing-at-point 'symbol))
              (expr (buffer-substring-no-properties
                     (car bnd-expr)
-                    (if bnd-last
-                        (car bnd-last)
-                      (cdr bnd-expr))))
+                    (if (equal bnd-expr bnd-last)
+                        (cdr bnd-expr)
+                      (car bnd-last))))
              (res (matlab-shell-completion-list expr)))
         (when bnd-last
           (let ((re (concat "^" (buffer-substring-no-properties
