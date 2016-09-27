@@ -790,9 +790,9 @@ All Key Bindings:
   (interactive)
   (kill-all-local-variables)
   (use-local-map matlab-mode-map)
-  (setq completion-at-point-functions '(matlab-completion-at-point t))
   (setq major-mode 'matlab-mode)
   (setq mode-name "MATLAB")
+  (setq-local completion-at-point-functions '(matlab-completion-at-point t))
   (if (boundp 'whitespace-modes)
       (add-to-list 'whitespace-modes 'matlab-mode))
   (setq local-abbrev-table matlab-mode-abbrev-table)
@@ -3332,7 +3332,7 @@ in the offending M file.
         comint-delimiter-argument-list (list [59]) ; semi colon
         comint-dynamic-complete-functions '(comint-replace-by-expanded-history)
         comint-process-echoes matlab-shell-echoes)
-  (setq completion-at-point-functions '(matlab-completion-at-point t))
+  (setq-local completion-at-point-functions '(matlab-completion-at-point t))
   ;; matlab-shell variable setup
   (make-local-variable 'matlab-shell-last-error-anchor)
   (setq matlab-shell-last-error-anchor nil)
