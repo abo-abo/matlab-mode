@@ -4309,6 +4309,15 @@ Check `matlab-mode-install-path'" filename))))
         (ring-insert find-tag-marker-ring (point-marker)))
       (matlab-eval (format "open('%s')" sym)))))
 
+(defun matlab-describe-function ()
+  (interactive)
+  (let ((cands (mapcan (lambda (x)
+                         (matlab-shell-completion-list (string x)))
+                       (number-sequence ?a ?z))))
+    (ivy-read "function: " cands
+              :action (lambda (x)
+                        (lispy-message (matlab-eval (format "help %s" x)))))))
+
 (provide 'matlab)
 
 ;;; matlab.el ends here
