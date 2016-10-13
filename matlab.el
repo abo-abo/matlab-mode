@@ -3794,17 +3794,7 @@ Similar to  `comint-send-input'."
 
     ;; change current directory?
     (if change-cd
-        (let ((cmd (progn
-                     (mapc
-                      (lambda (e)
-                        (while (string-match (car e) dir)
-                          (setq dir (replace-match
-                                     (format "', char(%s), '" (cdr e)) t t dir))))
-                      '(("ô" . "244")
-                        ("é" . "233")
-                        ("è" . "232")
-                        ("à" . "224")))
-                     dir)))
+        (let ((cmd dir))
           (matlab-shell-send-string (concat "cd(['" cmd "'])\n"))))
 
     (let ((cmd (concat fn-name " " param)))
