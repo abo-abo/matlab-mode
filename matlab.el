@@ -1657,7 +1657,7 @@ Argument START is where to start searching from."
                             (point))
                           (line-end-position))
         (goto-char (point-max))
-        (while (and (re-search-backward (concat "\\<" (matlab-block-end-re) "\\>")
+        (while (and (re-search-backward (concat "\\<" (matlab-block-end-re) "$")
                                         nil t)
                     (not (matlab-cursor-in-string-or-comment))
                     (matlab-valid-end-construct-p))
