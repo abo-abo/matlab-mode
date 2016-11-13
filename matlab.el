@@ -399,7 +399,7 @@ evaluating it."
     (define-key km [left-fringe mouse-1] 'matlab-dbg-breakpoint-toggle)
     (define-key km (kbd "M-.") 'matlab-goto-symbol)
     (define-key km (kbd "M-,") 'pop-tag-mark)
-    (define-key km (kbd "C-o") 'hydra-matlab/body)
+    ;; (define-key km (kbd "C-o") 'hydra-matlab/body)
     km)
   "The keymap used in `matlab-mode'.")
 
