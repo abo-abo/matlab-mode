@@ -723,26 +723,28 @@ ui\\(cont\\(ext\\(\\|menu\\)\\|rol\\)\\|menu\\|\
 mode.")
 
 (defun matlab-completion-at-point ()
-  (if (looking-back "\\(?:^\\|[\t\n =,]\\)\\([a-z_.()A-Z0-9]+\\)")
-      (let* ((bnd-expr (cons (match-beginning 1) (match-end 1)))
-             (bnd-last (bounds-of-thing-at-point 'symbol))
-             (expr (buffer-substring-no-properties
-                    (car bnd-expr)
-                    (if (or (equal bnd-expr bnd-last)
-                            (null bnd-last))
-                        (cdr bnd-expr)
-                      (car bnd-last))))
-             (res (matlab-shell-completion-list expr)))
-        (when bnd-last
-          (let ((re (concat "^" (buffer-substring-no-properties
-                                 (car bnd-last)
-                                 (cdr bnd-last)))))
-            (setq res (cl-remove-if-not (lambda (s) (string-match re s)) res))))
-        (list
-         (if bnd-last (car bnd-last) (point))
-         (if bnd-last (cdr bnd-last) (point))
-         res))
-    (error "unexpected")))
+  (let ((end (point))
+        (beg (progn
+               (while (< (skip-chars-backward "a-zA-Z0-9_.") 0)
+                 (when (looking-back ")")
+                   (backward-list 1)))
+               (point))))
+    (goto-char end)
+    (let* ((bnd-expr (cons beg end))
+           (bnd-last (bounds-of-thing-at-point 'symbol))
+           (expr (buffer-substring-no-properties
+                  (car bnd-expr)
+                  (cdr bnd-expr)))
+           (res (matlab-shell-completion-list expr)))
+      (when bnd-last
+        (let ((re (concat "^" (buffer-substring-no-properties
+                               (car bnd-last)
+                               (cdr bnd-last)))))
+          (setq res (cl-remove-if-not (lambda (s) (string-match re s)) res))))
+      (list
+       (if bnd-last (car bnd-last) (point))
+       (if bnd-last (cdr bnd-last) (point))
+       res))))
 
 ;;* MATLAB mode entry point
 ;;;###autoload
