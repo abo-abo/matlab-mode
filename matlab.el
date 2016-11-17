@@ -4354,7 +4354,14 @@ Check `matlab-mode-install-path'" filename))))
       (deactivate-mark)
       (with-no-warnings
         (ring-insert find-tag-marker-ring (point-marker)))
-      (matlab-eval (format "open('%s')" sym)))))
+      ;; (matlab-eval (format "open('%s')" sym))
+      (let ((file-name (matlab-cygpath (matlab-eval (format "which('%s')" sym)))))
+        (cond ((file-exists-p file-name)
+               (find-file file-name))
+              ((string-match "^built-in (\\(.*\\))$" file-name)
+               (find-file (concat (match-string 1 file-name) ".m")))
+              (t
+               (error "MATLAB requested %s, but it does not exist" file-name)))))))
 
 (defun matlab-describe-function ()
   (interactive)
