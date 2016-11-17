@@ -3594,7 +3594,8 @@ Optional argument ARG describes the number of chars to delete."
 (defun matlab-emacsdocomplete (str)
   (unless matlab-middleware-loaded-p
     ;; ensure emacsdocomplete.m is on path
-    (matlab-addpath (expand-file-name "toolbox" matlab-mode-root))
+    (matlab-addpath (matlab-uncygpath
+                     (expand-file-name "toolbox" matlab-mode-root)))
     (setq matlab-middleware-loaded-p t))
   (matlab-eval (concat "emacsdocomplete('" str "')")))
 
@@ -4326,6 +4327,24 @@ Check `matlab-mode-install-path'" filename))))
                                 "\n")))))
       (set-process-buffer process buffer))
     answer))
+
+(defun matlab-cygpath (file)
+  (if (eq system-type 'cygwin)
+      (replace-regexp-in-string
+       "\\([A-Za-z]\\):"
+       (lambda (x)
+         (concat "/" (downcase (match-string 1 x))))
+       (replace-regexp-in-string "\\\\" "/" file)
+       t)
+    file))
+
+(defun matlab-uncygpath (file)
+  (if (eq system-type 'cygwin)
+      (replace-regexp-in-string
+       "^/\\([a-z]\\)"
+       "\\1:"
+       file)
+    file))
 
 (defun matlab-goto-symbol ()
   (interactive)
