@@ -3260,15 +3260,22 @@ in the MATLAB prompt.")
   "The output of `matlab-eval' is redirected to this buffer.
 Instead of polluting the `matlab-shell'.")
 
+(defvar matlab-eval-filter-stack nil)
+
 (defun matlab-eval-filter (process str)
   "Use `comint-output-filter' for `matlab-shell'.
 Simply `insert' into `matlab-bg-eval-buffer' for `matlab-eval'."
-  (when (string-match-p ">> \\'" str)
-    (setq matlab-eval-done t))
+  (setq str (replace-regexp-in-string "" "" str))
+  (push str matlab-eval-filter-stack)
   (let ((buffer (process-buffer process)))
     (if (string= (buffer-name buffer) matlab-bg-eval-buffer)
         (with-current-buffer buffer
-          (insert str))
+          (insert str)
+          (when (looking-back "ans =\norg_babel_eoe\n.*"
+                              (line-beginning-position -1))
+            (delete-region (match-beginning 0)
+                           (match-end 0))
+            (setq matlab-eval-done t)))
       (comint-output-filter process str))))
 
 (defcustom matlab-shell-logo
@@ -4270,8 +4277,8 @@ Check `matlab-mode-install-path'" filename))))
 (defun matlab-eval (command)
   "Collect output of COMMAND without changing point."
   ;; `process-send-string' needs final newline
-  (unless (string-match "\n\\'" command)
-    (setq command (concat command "\n")))
+  (setq command (concat command "\n'org_babel_eoe'\n"))
+  (setq matlab-eval-filter-stack nil)
   (let* ((buffer (or (matlab-shell-active-p)
                      (save-window-excursion
                        (matlab-shell))))
@@ -4287,7 +4294,7 @@ Check `matlab-mode-install-path'" filename))))
          (progn
            (process-send-string process command)
            (with-current-buffer eval-buffer
-             (while (not matlab-eval-done)
+             (while (not (eq matlab-eval-done t))
                (accept-process-output process)
                (goto-char (point-max)))
              ;; MATLAB-specific backspace char nonsense
@@ -4295,9 +4302,15 @@ Check `matlab-mode-install-path'" filename))))
              (while (re-search-forward "" nil t)
                (delete-char -2))
              (goto-char (point-max))
-             (if (re-search-backward "^[A-Z_a-z0-9]+ = *\n\n?" nil t)
+             (if (re-search-backward "^\\([> ]*\\)[A-Z_a-z0-9]+ = *\n\n?" nil t)
                  (progn
-                   (setq answer (buffer-substring-no-properties (match-end 0) (- (point-max) 5)))
+                   (goto-char (match-end 0))
+                   (setq answer (buffer-substring-no-properties
+                                 (point)
+                                 (save-excursion
+                                   (goto-char (point-max))
+                                   (end-of-line 0)
+                                   (point))))
                    (when (= 0 (cl-count ?\n answer))
                      (setq answer (string-trim answer))))
                (setq answer
@@ -4306,7 +4319,10 @@ Check `matlab-mode-install-path'" filename))))
                                               (split-string
                                                (buffer-substring-no-properties
                                                 (point-min)
-                                                (point-max)) "^>> " t))
+                                                (point-max))
+                                               "^>> "
+                                               t
+                                               "\\(?:>> \\|\n\\)"))
                                 "\n")))))
       (set-process-buffer process buffer))
     answer))
