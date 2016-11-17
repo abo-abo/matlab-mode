@@ -3271,8 +3271,8 @@ Simply `insert' into `matlab-bg-eval-buffer' for `matlab-eval'."
     (if (string= (buffer-name buffer) matlab-bg-eval-buffer)
         (with-current-buffer buffer
           (insert str)
-          (when (looking-back "ans =\norg_babel_eoe\n.*"
-                              (line-beginning-position -1))
+          (when (looking-back "ans =\n+org_babel_eoe\n+.*"
+                              (line-beginning-position -5))
             (delete-region (match-beginning 0)
                            (match-end 0))
             (setq matlab-eval-done t)))
