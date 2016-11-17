@@ -723,19 +723,28 @@ ui\\(cont\\(ext\\(\\|menu\\)\\|rol\\)\\|menu\\|\
 mode.")
 
 (defun matlab-completion-at-point ()
-  (let ((end (point))
-        (beg (progn
-               (while (< (skip-chars-backward "a-zA-Z0-9_.") 0)
-                 (when (looking-back ")")
-                   (backward-list 1)))
-               (point))))
-    (goto-char end)
-    (let* ((bnd-expr (cons beg end))
+  (if (looking-back "\\(?:^\\|[\t\n =,]\\)\\([a-z_.()A-Z0-9]+\\)")
+      (let* ((bnd-expr (cons (match-beginning 1) (match-end 1)))
            (bnd-last (bounds-of-thing-at-point 'symbol))
-           (expr (buffer-substring-no-properties
+             expr res)
+        (if bnd-last
+            (let ((end (cdr bnd-last))
+                  beg)
+              (save-excursion
+                (goto-char end)
+                (while (and (re-search-backward "\\_<" (car bnd-expr) t)
+                            (null beg))
+                  (when (looking-back "(")
+                    (setq beg (point))))
+                (setq beg (point))
+                (setq expr (buffer-substring-no-properties beg end))))
+          (setq expr
+                (buffer-substring-no-properties
                   (car bnd-expr)
-                  (cdr bnd-expr)))
-           (res (matlab-shell-completion-list expr)))
+                 (cdr bnd-expr))))
+        (if (string-match "($" expr)
+            (error "need at least one letter of prefix")
+          (setq res (matlab-shell-completion-list expr))
       (when bnd-last
         (let ((re (concat "^" (buffer-substring-no-properties
                                (car bnd-last)
@@ -744,7 +753,8 @@ mode.")
       (list
        (if bnd-last (car bnd-last) (point))
        (if bnd-last (cdr bnd-last) (point))
-       res))))
+           res)))
+    (error "unexpected")))
 
 ;;* MATLAB mode entry point
 ;;;###autoload
