@@ -3275,6 +3275,8 @@ Simply `insert' into `matlab-bg-eval-buffer' for `matlab-eval'."
                               (line-beginning-position -5))
             (delete-region (match-beginning 0)
                            (match-end 0))
+            (when (re-search-backward "\n>>.*'org_babel_eoe'" nil t)
+              (delete-region (point) (point-max)))
             (setq matlab-eval-done t)))
       (comint-output-filter process str))))
 
