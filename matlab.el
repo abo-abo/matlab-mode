@@ -4280,9 +4280,9 @@ Check `matlab-mode-install-path'" filename))))
 (defun matlab-eval (command)
   "Collect output of COMMAND without changing point."
   ;; `process-send-string' needs final newline
-  (setq command (concat command "\n'org_babel_eoe'\n"))
   (setq matlab-eval-filter-stack nil)
-  (let* ((buffer (or (matlab-shell-active-p)
+  (let* ((new-command (concat command "\n'org_babel_eoe'\n"))
+         (buffer (or (matlab-shell-active-p)
                      (save-window-excursion
                        (matlab-shell))))
          (process (get-buffer-process buffer))
@@ -4295,13 +4295,15 @@ Check `matlab-mode-install-path'" filename))))
     (setq matlab-eval-done nil)
     (unwind-protect
          (progn
-           (process-send-string process command)
+           (process-send-string process new-command)
            (with-current-buffer eval-buffer
              (while (not (eq matlab-eval-done t))
                (accept-process-output process)
                (goto-char (point-max)))
              ;; MATLAB-specific backspace char nonsense
              (goto-char (point-min))
+             (when (looking-at (concat (regexp-quote command) "\n?"))
+               (delete-region (match-beginning 0) (match-end 0)))
              (while (re-search-forward "" nil t)
                (delete-char -2))
              (goto-char (point-max))
@@ -4314,19 +4316,18 @@ Check `matlab-mode-install-path'" filename))))
                                    (goto-char (point-max))
                                    (end-of-line 0)
                                    (point))))
-                   (if (= 0 (cl-count ?\n answer))
-                       (setq answer (string-trim answer))
-                     (setq answer (string-trim-right answer))))
+                   (setq answer (string-trim-right answer))
+                   (when (= 0 (cl-count ?\n answer))
+                     (setq answer (string-trim answer))))
                (setq answer
                      (mapconcat #'identity
-                                (cl-remove-if (lambda (x) (search x command))
-                                              (split-string
-                                               (buffer-substring-no-properties
-                                                (point-min)
-                                                (point-max))
-                                               "^>> "
-                                               t
-                                               "\\(?:>> \\|\n\\)"))
+                                (split-string
+                                 (buffer-substring-no-properties
+                                  (point-min)
+                                  (point-max))
+                                 "^>> "
+                                 t
+                                 "\\(?:>> \\|\n\\)")
                                 "\n")))))
       (set-process-buffer process buffer))
     answer))
