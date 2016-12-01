@@ -4302,7 +4302,12 @@ Check `matlab-mode-install-path'" filename))))
                (goto-char (point-max)))
              ;; MATLAB-specific backspace char nonsense
              (goto-char (point-min))
-             (when (looking-at (concat (regexp-quote command) "\n?"))
+             (when (looking-at (concat
+                                (mapconcat (lambda (s)
+                                             (concat
+                                              "\\(?:>> \\)?" s))
+                                           (split-string (regexp-quote command) "\n")
+                                           "\n") "\n?"))
                (delete-region (match-beginning 0) (match-end 0)))
              (while (re-search-forward "" nil t)
                (delete-char -2))
