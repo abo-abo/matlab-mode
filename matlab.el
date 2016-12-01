@@ -3160,13 +3160,6 @@ This file is read to initialize the comint input ring.")
   "List of functions to call on entry to MATLAB shell mode."
   :type 'hook)
 
-(defcustom matlab-shell-ask-MATLAB-for-completions t
-  "When Non-nil, ask MATLAB for a completion list.
-When nil, just complete file names.  (The original behavior.)
-At this time, MATLAB based completion can be slow if there are
-a lot of possible answers."
-  :type 'boolean)
-
 (defvar matlab-shell-buffer-name "MATLAB"
   "Name used to create `matlab-shell' mode buffers.
 This name will have *'s surrounding it.")
@@ -3186,8 +3179,8 @@ This name will have *'s surrounding it.")
      'next-error 'matlab-shell-last-error
      map global-map)
     (define-key map (kbd "C-c .") 'matlab-find-file-on-path)
-    (define-key map (kbd "TAB") 'matlab-shell-tab)
-    (define-key map (kbd "C-i") 'matlab-shell-tab)
+    (define-key map (kbd "TAB") 'complete-symbol)
+    (define-key map (kbd "C-i") 'complete-symbol)
     (define-key map (kbd "C-<up>") 'comint-previous-matching-input-from-input)
     (define-key map (kbd "C-<down>") 'comint-next-matching-input-from-input)
     (define-key map (kbd "<up>") 'matlab-shell-previous-matching-input-from-input)
@@ -3668,94 +3661,6 @@ Returns a string path to the root of the executing MATLAB."
         (setq output (matlab-shell-collect-command-output cmd))
         (string-match "$" output)
         (substring output 0 (match-beginning 0))))))
-
-(defvar matlab-shell-window-exists-for-display-completion-flag nil
-  "Non-nil means there was an 'other-window' available when `display-completion-list' is called.")
-
-(defun matlab-shell-tab ()
-  "Send [TAB] to the currently running matlab process and retrieve completion."
-  (interactive)
-  (if (not matlab-shell-ask-MATLAB-for-completions)
-      (call-interactively 'comint-dynamic-complete-filename)
-    (if (not (matlab-on-prompt-p))
-        (error "Completions not available"))
-    (if nil
-        ;; For older versions of MATLAB that don't have TAB
-        ;; completion.
-        (call-interactively 'comint-dynamic-complete-filename)
-      ;; Save the old command
-      (goto-char (point-max))
-      (let ((inhibit-field-text-motion t))
-        (beginning-of-line))
-      (re-search-forward comint-prompt-regexp)
-      (let* ((lastcmd (buffer-substring (point) (line-end-position)))
-             (tempcmd lastcmd)
-             (completions nil)
-             (limitpos nil))
-        ;; search for character which limits completion, and limit command to it
-        (setq limitpos
-              (if (string-match ".*\\([( /[.,;=']\\)" lastcmd)
-                  (1+ (match-beginning 1))
-                0))
-        (setq lastcmd (substring lastcmd limitpos))
-        ;; Whack the old command so we can insert it back later.
-        (delete-region (+ (point) limitpos) (line-end-position))
-        ;; double every single quote
-        (while (string-match "[^']\\('\\)\\($\\|[^']\\)" tempcmd)
-          (setq tempcmd (replace-match "''" t t tempcmd 1)))
-        ;; collect the list
-        (setq completions (matlab-shell-completion-list tempcmd))
-        (goto-char (point-max))
-        (if (eq (length completions) 1)
-            ;; If there is only one, then there is an obvious thing to do.
-            (progn
-              (insert (car (car completions)))
-              ;; kill completions buffer if still visible
-              (matlab-shell-tab-hide-completions))
-          (let ((try (try-completion lastcmd completions)))
-            ;; Insert in a good completion.
-            (cond ((or (eq try nil) (eq try t)
-                       (and (stringp try)
-                            (string= try lastcmd)))
-                   (insert lastcmd)
-                   ;; Before displaying the completions buffer, check to see if
-                   ;; the completions window is already displayed, or if there is
-                   ;; a next window to display.  This determines how to remove the
-                   ;; completions later.
-                   (if (get-buffer-window "*Completions*")
-                       nil ;; Recycle old value of the display flag.
-                     ;; Else, reset this variable.
-                     (setq matlab-shell-window-exists-for-display-completion-flag
-                           ;; Else, it isn't displayed, save an action.
-                           (if (eq (next-window) (selected-window))
-                               ;; If there is no other window, the post action is
-                               ;; to delete.
-                               'delete
-                             ;; If there is a window to display, the post
-                             ;; action is to bury.
-                             'bury)))
-                   (with-output-to-temp-buffer "*Completions*"
-                     (display-completion-list (mapcar 'car completions) lastcmd)))
-                  ((stringp try)
-                   (insert try)
-                   (matlab-shell-tab-hide-completions))
-                  (t
-                   (insert lastcmd)))))))))
-
-(defun matlab-shell-tab-hide-completions ()
-  "Hide any completion windows for `matlab-shell-tab'."
-  (cond ((eq matlab-shell-window-exists-for-display-completion-flag 'delete)
-         (when (get-buffer "*Completions*")
-           (delete-windows-on "*Completions*")))
-        ((eq matlab-shell-window-exists-for-display-completion-flag 'bury)
-         (let ((orig (selected-window))
-               (bw nil))
-           (while (setq bw (get-buffer-window "*Completions*"))
-             (select-window bw)
-             (bury-buffer))
-           (select-window orig))))
-  ;; Reset state.
-  (setq matlab-shell-window-exists-for-display-completion-flag nil))
 
 ;;* MATLAB mode Shell commands
 (defun matlab-show-matlab-shell-buffer ()
