@@ -4196,6 +4196,11 @@ Check `matlab-mode-install-path'" filename))))
 
 (defvar matlab-prompt-regex "^K?>> ")
 
+(defun matlab-current-line ()
+  (buffer-substring-no-properties
+   (line-beginning-position)
+   (line-end-position)))
+
 ;;* eval
 (defun matlab-eval (command)
   "Collect output of COMMAND without changing point."
@@ -4207,6 +4212,7 @@ Check `matlab-mode-install-path'" filename))))
                        (matlab-shell))))
          (process (get-buffer-process buffer))
          (eval-buffer (get-buffer-create matlab-bg-eval-buffer))
+         current-line offset
          answer)
     ;; don't mess with the main shell buffer
     (set-process-buffer process eval-buffer)
@@ -4222,15 +4228,32 @@ Check `matlab-mode-install-path'" filename))))
                (goto-char (point-max)))
              ;; MATLAB-specific backspace char nonsense
              (goto-char (point-min))
-             (when (looking-at (concat
-                                (mapconcat (lambda (s)
-                                             (concat
-                                              "\\(?:>> \\)?" s))
-                                           (split-string (regexp-quote command) "\n")
-                                           "\n") "\n?"))
-               (delete-region (match-beginning 0) (match-end 0)))
              (while (re-search-forward "" nil t)
                (delete-char -2))
+             ;; Fix ">>" echoes not at bol
+             (goto-char (point-min))
+             (while (re-search-forward ">> " nil t)
+               (unless (save-excursion (goto-char (match-beginning 0))
+                                       (bolp))
+                 (goto-char (match-beginning 0))
+                 (newline)
+                 (end-of-line)))
+
+             ;; Remove all lines that echo the original command
+             (goto-char (point-min))
+             (while (< (point) (point-max))
+               (setq current-line (replace-regexp-in-string
+                                   "^>> " "" (matlab-current-line)))
+               (cond ((looking-at ">> $")
+                      (delete-region (line-beginning-position) (1+ (line-end-position))))
+                     ((and (> (setq offset (length current-line)) 0)
+                           (eq 0 (cl-search current-line command)))
+                      (delete-region (line-beginning-position) (1+ (line-end-position)))
+                      (setq command (substring command offset))
+                      (when (string-match "\\`\n+" command)
+                        (setq command (substring command (match-end 0)))))
+                     (t
+                      (forward-line 1))))
              (goto-char (point-max))
              (if (re-search-backward "^\\([> ]*\\)[A-Z_a-z0-9]+ = *\n\n?" nil t)
                  (progn
