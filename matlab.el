@@ -741,21 +741,10 @@ mode.")
          (let* ((bnd-expr (cons (matlab-sexp-beg) (point)))
                 (bnd-last (bounds-of-thing-at-point 'symbol))
                 expr res)
-           (if bnd-last
-               (let ((end (cdr bnd-last))
-                     beg)
-                 (save-excursion
-                   (goto-char end)
-                   (while (and (re-search-backward "\\_<" (car bnd-expr) t)
-                               (null beg))
-                     (when (looking-back "(")
-                       (setq beg (point))))
-                   (setq beg (point))
-                   (setq expr (buffer-substring-no-properties beg end))))
-             (setq expr
-                   (buffer-substring-no-properties
-                    (car bnd-expr)
-                    (cdr bnd-expr))))
+           (setq expr
+                 (buffer-substring-no-properties
+                  (car bnd-expr)
+                  (cdr bnd-expr)))
            (if (string-match "($" expr)
                (error "need at least one letter of prefix")
              (setq res (matlab-shell-completion-list expr))
