@@ -736,6 +736,7 @@ mode.")
 
 (defun matlab-completion-at-point ()
   (cond ((or (matlab-cursor-in-string) (looking-at "'"))
+         (setq default-directory (matlab-eval "pwd"))
          (comint--complete-file-name-data))
         ((looking-back "[a-z_.A-Z0-9]+")
          (let* ((bnd-expr (cons (matlab-sexp-beg) (point)))
