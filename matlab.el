@@ -218,7 +218,7 @@ This overcomes situations where the `fill-column' plus the
   "Text used to perform continuation on code lines.
 This is used to generate and identify continuation lines.")
 
-(defcustom matlab-fill-code t
+(defcustom matlab-fill-code nil
   "If true, `auto-fill-mode' causes code lines to be automatically continued."
   :type 'boolean)
 
