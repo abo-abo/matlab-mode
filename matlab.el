@@ -2176,13 +2176,14 @@ See `matlab-calculate-indentation'."
              (if rc (- 0 matlab-comment-anti-indent) 0)))))))
 
 ;;* The return key
-(defcustom matlab-return-function 'matlab-indent-end-before-ret
+(defcustom matlab-return-function 'matlab-indent-after-ret
   "Function to handle return key.
 Must be one of:
     'matlab-indent-after-ret
     'matlab-indent-end-before-ret
     'matlab-indent-before-ret"
-  :type '(choice (function-item newline)
+  :type '(choice
+          (function-item newline)
           (function-item matlab-indent-after-ret)
           (function-item matlab-indent-end-before-ret)
           (function-item matlab-indent-before-ret)))
